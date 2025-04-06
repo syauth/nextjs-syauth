@@ -1,6 +1,6 @@
 # NexoAuth SDK for Next.js
 
-A Next.js authentication SDK for NexoAuth services.
+A NexoAuth SDK for NextJS by Nexorix.
 
 ## Installation
 
