@@ -21,10 +21,10 @@ A Next.js application demonstrating the implementation of NexoAuth, an authentic
 ## Installation
 
 #### 1. Clone the repository
-git clone https://github.com/nexoauth/nexoauth-test-app.git
+git clone https://github.com/nexoauth/nextjs-nexoauth.git
 
 #### 2. Navigate to project directory
-cd nexoauth-test-app
+cd nextjs-nexoauth/examples
 
 #### 3. Install dependencies
 npm install
