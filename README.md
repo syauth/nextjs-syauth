@@ -19,11 +19,9 @@ yarn add nextjs-nexoauth
 import { NexoAuth } from 'nextjs-nexoauth';
 
 const nexoAuthClient = new NexoAuth({
-  apiUrl: 'https://your-api-url.com/api',
-  tokenStorageKey: 'nexoauth_token',
-  userStorageKey: 'nexoauth_user',
-  authStatusCookieName: 'auth_status'
-});
+  apiUrl: process.env.NEXT_PUBLIC_API_URL || 'https://localhost/api/e/v1',
+  apiKey: process.env.NEXT_PUBLIC_API_KEY || 'you-api-key',
+})
 
 export default nexoAuthClient;
 ```
