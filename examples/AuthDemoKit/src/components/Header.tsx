@@ -4,10 +4,10 @@ import React from 'react'
 import { Container, Nav, Navbar } from 'react-bootstrap'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useNexoAuth } from 'nextjs-nexoauth'
+import { useSyAuth } from 'nextjs-syauth'
 
 const Header: React.FC = () => {
-  const { isAuthenticated, user, logout, loading } = useNexoAuth()
+  const { isAuthenticated, user, logout, loading } = useSyAuth()
   const router = useRouter()
 
   const handleLogout = async () => {
@@ -31,7 +31,7 @@ const Header: React.FC = () => {
           as={Link}
           href='/'
         >
-          NexoAuth Test
+          SyAuth Test
         </Navbar.Brand>
         <Navbar.Toggle aria-controls='basic-navbar-nav' />
         <Navbar.Collapse id='basic-navbar-nav'>

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { Form, Button, Card, Alert } from 'react-bootstrap'
-import { useNexoAuth } from 'nextjs-nexoauth'
+import { useSyAuth } from 'nextjs-syauth'
 import Link from 'next/link'
 
 export default function ForgotPasswordPage() {
@@ -10,7 +10,7 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
 
-  const { requestPasswordReset } = useNexoAuth()
+  const { requestPasswordReset } = useSyAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

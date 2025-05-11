@@ -2,10 +2,10 @@
 
 import React from 'react'
 import { Alert } from 'react-bootstrap'
-import { useNexoAuth } from 'nextjs-nexoauth'
+import { useSyAuth } from 'nextjs-syauth'
 
 const AuthStatus: React.FC = () => {
-  const { isAuthenticated, user, loading, error } = useNexoAuth()
+  const { isAuthenticated, user, loading, error } = useSyAuth()
 
   if (loading) {
     return <Alert variant='info'>Checking authentication status...</Alert>

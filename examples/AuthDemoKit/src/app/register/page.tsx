@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { Form, Button, Card, Alert, Row, Col } from 'react-bootstrap'
-import { useNexoAuth } from 'nextjs-nexoauth'
+import { useSyAuth } from 'nextjs-syauth'
 import Link from 'next/link'
 
 export default function RegisterPage() {
@@ -16,7 +16,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
-  const { register } = useNexoAuth()
+  const { register } = useSyAuth()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target

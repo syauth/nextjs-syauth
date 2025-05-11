@@ -2,10 +2,10 @@
 
 import React from 'react'
 import { Card, Alert, Row, Col } from 'react-bootstrap'
-import { useNexoAuth } from 'nextjs-nexoauth'
+import { useSyAuth } from 'nextjs-syauth'
 
 export default function DashboardPage() {
-  const { user, loading } = useNexoAuth()
+  const { user, loading } = useSyAuth()
 
   if (loading) {
     return <Alert variant='info'>Loading...</Alert>
@@ -19,7 +19,7 @@ export default function DashboardPage() {
         <Alert.Heading>Welcome to your dashboard!</Alert.Heading>
         <p>
           This is a protected page that only authenticated users can access. If
-          you can see this, the NexoAuth authentication is working correctly.
+          you can see this, the SyAuth authentication is working correctly.
         </p>
       </Alert>
 
@@ -61,7 +61,7 @@ export default function DashboardPage() {
             <Card.Header>Authentication Info</Card.Header>
             <Card.Body>
               <p>
-                The authentication is managed by the NexoAuth SDK which handles:
+                The authentication is managed by the SyAuth SDK which handles:
               </p>
               <ul>
                 <li>Authentication state management</li>

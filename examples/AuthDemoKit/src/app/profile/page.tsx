@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react'
 import { Form, Button, Card, Alert, Row, Col } from 'react-bootstrap'
-import { useNexoAuth } from 'nextjs-nexoauth'
+import { useSyAuth } from 'nextjs-syauth'
 
 export default function ProfilePage() {
-  const { user, loading, updateProfile } = useNexoAuth()
+  const { user, loading, updateProfile } = useSyAuth()
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -53,7 +53,7 @@ export default function ProfilePage() {
     setMessage({ type: '', text: '' })
 
     try {
-      // Use the updateProfile method from NexoAuth
+      // Use the updateProfile method from SyAuth
       await updateProfile({
         first_name: formData.first_name,
         last_name: formData.last_name,

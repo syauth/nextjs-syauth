@@ -1,6 +1,6 @@
-# NexoAuth Demo Application
+# SyAuth Demo Application
 
-A Next.js application demonstrating the implementation of NexoAuth, an authentication SDK for Next.js applications.
+A Next.js application demonstrating the implementation of SyAuth, an authentication SDK for Next.js applications.
 
 ## Features
 
@@ -14,17 +14,17 @@ A Next.js application demonstrating the implementation of NexoAuth, an authentic
 
 - Next.js 15  
 - React 19  
-- NexoAuth SDK  
+- SyAuth SDK  
 - React Bootstrap  
 - TypeScript  
 
 ## Installation
 
 #### 1. Clone the repository
-git clone https://github.com/nexoauth/nextjs-nexoauth.git
+git clone https://github.com/syauth/nextjs-syauth.git
 
 #### 2. Navigate to project directory
-cd nextjs-nexoauth/examples
+cd nextjs-syauth/examples
 
 #### 3. Install dependencies
 npm install
@@ -46,12 +46,12 @@ NEXT_PUBLIC_API_URL=your_api_url
 NEXT_PUBLIC_API_KEY=your_api_key
 ```
 
-### NexoAuth Setup
+### SyAuth Setup
 
-Configured in `nexoauth.config.ts`:
+Configured in `syauth.config.ts`:
 
 ```typescript
-const nexoAuthClient = new NexoAuth({
+const syAuthClient = new SyAuth({
   apiUrl: process.env.NEXT_PUBLIC_API_URL,
   apiKey: process.env.NEXT_PUBLIC_API_KEY
 });
@@ -77,4 +77,4 @@ defaultProtectedRoute: '/dashboard'
 
 ## License
 
-[MIT] © NexoAuth
+[MIT] © SyAuth

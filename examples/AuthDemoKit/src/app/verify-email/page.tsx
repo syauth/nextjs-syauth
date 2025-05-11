@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react'
 import { Form, Button, Card, Alert } from 'react-bootstrap'
-import { useNexoAuth } from 'nextjs-nexoauth'
+import { useSyAuth } from 'nextjs-syauth'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -15,7 +15,7 @@ function VerifyEmailForm() {
   const [registered, setRegistered] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
 
-  const { verifyEmail, requestVerificationCode } = useNexoAuth()
+  const { verifyEmail, requestVerificationCode } = useSyAuth()
   const searchParams = useSearchParams()
 
   // Get email and registered status from query parameters

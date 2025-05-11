@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react'
 import { Form, Button, Card, Alert } from 'react-bootstrap'
-import { useNexoAuth } from 'nextjs-nexoauth'
+import { useSyAuth } from 'nextjs-syauth'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -17,7 +17,7 @@ function ResetPasswordForm() {
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
-  const { confirmPasswordReset } = useNexoAuth()
+  const { confirmPasswordReset } = useSyAuth()
   const searchParams = useSearchParams()
 
   // Get email from query parameter

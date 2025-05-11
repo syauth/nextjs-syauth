@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { withAuth } from 'nextjs-nexoauth'
+import { withAuth } from 'nextjs-syauth'
 
 export function middleware(request: NextRequest) {
   return withAuth(request, {

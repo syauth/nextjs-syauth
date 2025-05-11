@@ -7,13 +7,13 @@ import AuthStatus from '@/components/AuthStatus'
 export default function Home() {
   return (
     <main>
-      <h1 className='mb-4'>NexoAuth SDK Test Application</h1>
+      <h1 className='mb-4'>SyAuth SDK Test Application</h1>
       <AuthStatus />
       <Card className='mb-4'>
         <Card.Body>
-          <Card.Title>Welcome to the NexoAuth Test App</Card.Title>
+          <Card.Title>Welcome to the SyAuth Test App</Card.Title>
           <Card.Text>
-            This is a minimal application to test the NexoAuth SDK
+            This is a minimal application to test the SyAuth SDK
             functionality. You can use this app to test authentication flows
             including login, registration, password reset, and protected routes.
           </Card.Text>
@@ -44,9 +44,9 @@ export default function Home() {
       </Card>
       <Card>
         <Card.Body>
-          <Card.Title>About NexoAuth</Card.Title>
+          <Card.Title>About SyAuth</Card.Title>
           <Card.Text>
-            NexoAuth is an authentication SDK for Next.js applications. It
+            SyAuth is an authentication SDK for Next.js applications. It
             provides:
           </Card.Text>
           <ul>

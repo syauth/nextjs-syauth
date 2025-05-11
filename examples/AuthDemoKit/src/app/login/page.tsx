@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react'
 import { Form, Button, Card, Alert } from 'react-bootstrap'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useNexoAuth } from 'nextjs-nexoauth'
+import { useSyAuth } from 'nextjs-syauth'
 import Link from 'next/link'
 
 // Create a separate component that uses search params
@@ -15,7 +15,7 @@ function LoginForm() {
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
-  const { login, isAuthenticated } = useNexoAuth()
+  const { login, isAuthenticated } = useSyAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
 
