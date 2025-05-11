@@ -1,13 +1,13 @@
-# NexoAuth SDK for Next.js
+# SyAuth SDK for Next.js
 
-A NexoAuth SDK for NextJS by Nexorix.
+A SyAuth SDK for NextJS by Nexorix.
 
 ## Installation
 
 ```bash
-npm install nextjs-nexoauth
+npm install nextjs-syauth
 # or
-yarn add nextjs-nexoauth
+yarn add nextjs-syauth
 ```
 
 ## Quick Start
@@ -15,15 +15,15 @@ yarn add nextjs-nexoauth
 ### 1. Initialize the Auth Client
 
 ```typescript
-// nexoauth.config.ts
-import { NexoAuth } from 'nextjs-nexoauth';
+// syauth.config.ts
+import { SyAuth } from 'nextjs-syauth';
 
-const nexoAuthClient = new NexoAuth({
+const syAuthClient = new SyAuth({
   apiUrl: process.env.NEXT_PUBLIC_API_URL || 'https://localhost/api/e/v1',
   apiKey: process.env.NEXT_PUBLIC_API_KEY || 'you-api-key',
 })
 
-export default nexoAuthClient;
+export default syAuthClient;
 ```
 
 ### 2. Add the Auth Provider to your Layout
@@ -32,8 +32,8 @@ export default nexoAuthClient;
 // app/layout.tsx
 'use client';
 
-import { NexoAuthProvider } from 'nextjs-nexoauth';
-import nexoAuthClient from '@/nexoauth.config';
+import { SyAuthProvider } from 'nextjs-syauth';
+import syAuthClient from '@/syauth.config';
 
 export default function RootLayout({
   children,
@@ -43,13 +43,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <NexoAuthProvider 
-          authClient={nexoAuthClient}
+        <SyAuthProvider 
+          authClient={syAuthClient}
           redirectAfterLogin="/dashboard"
           unauthorizedRedirect="/login"
         >
           {children}
-        </NexoAuthProvider>
+        </SyAuthProvider>
       </body>
     </html>
   );
@@ -61,7 +61,7 @@ export default function RootLayout({
 ```typescript
 // middleware.ts
 import { NextRequest } from 'next/server';
-import { withAuth } from 'nextjs-nexoauth';
+import { withAuth } from 'nextjs-syauth';
 
 export function middleware(request: NextRequest) {
   return withAuth(request, {
@@ -81,10 +81,10 @@ export const config = {
 ```typescript
 'use client';
 
-import { useNexoAuth } from 'nextjs-nexoauth';
+import { useSyAuth } from 'nextjs-syauth';
 
 export default function Dashboard() {
-  const { user, isAuthenticated, loading, logout } = useNexoAuth();
+  const { user, isAuthenticated, loading, logout } = useSyAuth();
   
   if (loading) return <div>Loading...</div>;
   
