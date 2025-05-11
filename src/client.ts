@@ -49,7 +49,7 @@ export interface PasswordResetResponse {
   success: boolean
 }
 
-export interface NexoAuthConfig {
+export interface SyAuthConfig {
   apiUrl: string
   apiKey: string
   onLoginSuccess?: (user: AuthUser) => void
@@ -70,15 +70,15 @@ export interface PasswordResetConfirmData {
   confirm_password: string
 }
 
-class NexoAuth {
+class SyAuth {
   private apiClient: AxiosInstance
-  private config: NexoAuthConfig
+  private config: SyAuthConfig
   private tokenKey: string
   private userKey: string
   private cookieName: string
   private apiKey: string
 
-  constructor(config: NexoAuthConfig) {
+  constructor(config: SyAuthConfig) {
     this.config = config
     this.tokenKey = 'auth_token'
     this.userKey = 'auth_user'
@@ -86,7 +86,7 @@ class NexoAuth {
     this.apiKey = config.apiKey
 
     if (!config.apiKey) {
-      throw new Error('API key is required for NexoAuth')
+      throw new Error('API key is required for SyAuth')
     }
     // Create API client
     this.apiClient = axios.create({
@@ -290,4 +290,4 @@ class NexoAuth {
   }
 }
 
-export default NexoAuth
+export default SyAuth

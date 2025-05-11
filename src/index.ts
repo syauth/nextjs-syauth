@@ -1,14 +1,14 @@
-import NexoAuth from './client'
-import { NexoAuthProvider, useNexoAuth } from './react'
+import SyAuth from './client'
+import { SyAuthProvider, useSyAuth } from './react'
 import { withAuth } from './middleware'
 
-export { NexoAuth, NexoAuthProvider, useNexoAuth, withAuth }
+export { SyAuth, SyAuthProvider, useSyAuth, withAuth }
 
 // export types
 export type {
   AuthUser,
   AuthResponse,
-  NexoAuthConfig,
+  SyAuthConfig,
   ProfileUpdateData,
   RegisterData,
   PasswordResetConfirmData,

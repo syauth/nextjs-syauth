@@ -29,7 +29,7 @@ export interface MiddlewareOptions {
 }
 
 /**
- * Middleware helper for NexoAuth
+ * Middleware helper for SyAuth
  */
 export function withAuth(
   request: NextRequest,

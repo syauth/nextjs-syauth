@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import NexoAuth, {
+import SyAuth, {
   AuthUser,
   RegisterData,
   PasswordResetConfirmData,
@@ -39,13 +39,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 // Provider props
 interface AuthProviderProps {
   children: React.ReactNode
-  authClient: NexoAuth
+  authClient: SyAuth
   redirectAfterLogin?: string
   unauthorizedRedirect?: string
 }
 
 // Auth provider component
-export const NexoAuthProvider: React.FC<AuthProviderProps> = ({
+export const SyAuthProvider: React.FC<AuthProviderProps> = ({
   children,
   authClient,
   redirectAfterLogin = '/dashboard',
@@ -311,10 +311,10 @@ export const NexoAuthProvider: React.FC<AuthProviderProps> = ({
 }
 
 // Hook to use auth context
-export const useNexoAuth = () => {
+export const useSyAuth = () => {
   const context = useContext(AuthContext)
   if (context === undefined) {
-    throw new Error('useNexoAuth must be used within a NexoAuthProvider')
+    throw new Error('useSyAuth must be used within a SyAuthProvider')
   }
   return context
 }
