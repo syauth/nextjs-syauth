@@ -19,7 +19,6 @@ export default function Navbar() {
   // Token refresh error handling
   useEffect(() => {
     if (sessionWithError?.error === getRefreshTokenErrorMessage()) {
-      console.log('Session expired. Redirecting to login...')
       // Sign out the user and redirect to the login page
       signOut({ callbackUrl: '/login' })
     }

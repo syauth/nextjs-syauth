@@ -1,5 +1,7 @@
 # OAuth Demo Kit
 
+[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 A kit demonstrating OAuth 2.0 and OpenID Connect integration with SyAuth using NextAuth.js.
 
 ## Features
@@ -73,3 +75,23 @@ The project follows a clean, modular architecture:
 ## License
 
 MIT
+
+## Contributing
+
+Contributions are welcome! Please open issues or submit pull requests for improvements and bug fixes. For major changes, please open an issue first to discuss what you would like to change.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/YourFeature`)
+3. Commit your changes (`git commit -am 'Add some feature'`)
+4. Push to the branch (`git push origin feature/YourFeature`)
+5. Open a pull request
+
+## Usage Example
+
+After setting up your environment variables and installing dependencies, you can start the development server:
+
+```bash
+npm run dev
+```
+
+Visit `http://localhost:3000` in your browser. Click "Login" to authenticate via SyAuth. After successful login, you will be redirected to the welcome page, where you can see your authenticated session details.
