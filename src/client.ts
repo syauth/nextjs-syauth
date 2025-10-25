@@ -1,92 +1,142 @@
-import axios, { AxiosInstance } from 'axios'
+import axios, { AxiosInstance, AxiosError } from 'axios';
 
 export interface AuthUser {
-  id: string
-  email: string
-  first_name: string
-  last_name: string
-  email_verified: boolean
-  user_type: string
-  company: string
-  job_title: string
-  phone_number: string
-  country: string
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  email_verified: boolean;
+  user_type: string;
+  company: string;
+  job_title: string;
+  phone_number: string;
+  country: string;
 }
 
 export interface ProfileUpdateData {
-  first_name?: string
-  last_name?: string
-  email?: string
-  password?: string
-  current_password?: string
-  company?: string
-  job_title?: string
-  phone_number?: string
-  country?: string
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  password?: string;
+  current_password?: string;
+  company?: string;
+  job_title?: string;
+  phone_number?: string;
+  country?: string;
 }
 
 export interface AuthResponse {
-  user: AuthUser
-  token?: string
-  refresh_token?: string
-  message: string
+  user: AuthUser;
+  token?: string;
+  refresh_token?: string;
+  message: string;
 }
 
 export interface RegisterResponse {
-  message: string
-  user?: Partial<AuthUser>
-  success: boolean
+  message: string;
+  user?: Partial<AuthUser>;
+  success: boolean;
 }
 
 export interface VerificationResponse {
-  message: string
-  success: boolean
-  email?: string
+  message: string;
+  success: boolean;
+  email?: string;
 }
 
 export interface PasswordResetResponse {
-  message: string
-  success: boolean
+  message: string;
+  success: boolean;
 }
 
 export interface SyAuthConfig {
-  apiUrl: string
-  apiKey: string
-  onLoginSuccess?: (user: AuthUser) => void
-  onLogout?: () => void
+  apiUrl: string;
+  apiKey: string;
+  onLoginSuccess?: (user: AuthUser) => void;
+  onLogout?: () => void;
 }
 export interface RegisterData {
-  email: string
-  password: string
-  confirm_password: string
-  first_name: string
-  last_name: string
+  email: string;
+  password: string;
+  confirm_password: string;
+  first_name: string;
+  last_name: string;
 }
 
 export interface PasswordResetConfirmData {
-  email: string
-  code: string
-  new_password: string
-  confirm_password: string
+  email: string;
+  code: string;
+  new_password: string;
+  confirm_password: string;
+}
+
+export interface DjangoValidationError {
+  [key: string]: string[] | string;
+}
+
+/**
+ * Format Django error responses into user-friendly messages
+ */
+function formatDjangoError(error: AxiosError): string {
+  if (!error.response?.data) {
+    return error.message || 'An unexpected error occurred';
+  }
+
+  const data = error.response.data as Record<string, unknown>;
+
+  if (typeof data === 'string') {
+    return data;
+  }
+
+  if (data.error) {
+    return data.error as string;
+  }
+
+  if (data.message) {
+    return data.message as string;
+  }
+
+  if (data.detail) {
+    return data.detail as string;
+  }
+
+  const validationErrors: string[] = [];
+  for (const [field, messages] of Object.entries(data)) {
+    if (Array.isArray(messages)) {
+      messages.forEach((msg: string) => {
+        const fieldLabel = field === 'non_field_errors' ? '' : `${field}: `;
+        validationErrors.push(`${fieldLabel}${msg}`);
+      });
+    } else if (typeof messages === 'string') {
+      const fieldLabel = field === 'non_field_errors' ? '' : `${field}: `;
+      validationErrors.push(`${fieldLabel}${messages}`);
+    }
+  }
+
+  if (validationErrors.length > 0) {
+    return validationErrors.join(', ');
+  }
+
+  return error.message || 'An unexpected error occurred';
 }
 
 class SyAuth {
-  private apiClient: AxiosInstance
-  private config: SyAuthConfig
-  private tokenKey: string
-  private userKey: string
-  private cookieName: string
-  private apiKey: string
+  private apiClient: AxiosInstance;
+  private config: SyAuthConfig;
+  private tokenKey: string;
+  private userKey: string;
+  private cookieName: string;
+  private apiKey: string;
 
   constructor(config: SyAuthConfig) {
-    this.config = config
-    this.tokenKey = 'auth_token'
-    this.userKey = 'auth_user'
-    this.cookieName = 'auth_status'
-    this.apiKey = config.apiKey
+    this.config = config;
+    this.tokenKey = 'auth_token';
+    this.userKey = 'auth_user';
+    this.cookieName = 'auth_status';
+    this.apiKey = config.apiKey;
 
     if (!config.apiKey) {
-      throw new Error('API key is required for SyAuth')
+      throw new Error('API key is required for SyAuth');
     }
     // Create API client
     this.apiClient = axios.create({
@@ -94,23 +144,23 @@ class SyAuth {
       headers: {
         'Content-Type': 'application/json',
       },
-    })
+    });
 
     // Add token interceptor
     this.apiClient.interceptors.request.use(
-      (config) => {
-        const token = this.getToken()
+      config => {
+        const token = this.getToken();
         if (token) {
-          config.headers.Authorization = `Bearer ${token}`
+          config.headers.Authorization = `Bearer ${token}`;
         }
-        return config
+        return config;
       },
-      (error) => Promise.reject(error)
-    )
+      error => Promise.reject(error)
+    );
 
     // Initialize auth status
     if (typeof window !== 'undefined') {
-      this.syncAuthStatus()
+      this.syncAuthStatus();
     }
   }
 
@@ -125,51 +175,56 @@ class SyAuth {
         email,
         password,
         remember_me,
-      })
+      });
 
       if (response.data.token) {
-        this.setToken(response.data.token)
+        this.setToken(response.data.token);
       }
 
       if (response.data.user) {
-        this.setUser(response.data.user)
+        this.setUser(response.data.user);
       }
 
-      this.syncAuthStatus()
+      this.syncAuthStatus();
 
       if (this.config.onLoginSuccess) {
-        this.config.onLoginSuccess(response.data.user)
+        this.config.onLoginSuccess(response.data.user);
       }
 
-      return response.data.user
+      return response.data.user;
     } catch (error) {
-      throw error
+      // Handle Axios errors with proper Django error message extraction
+      if (axios.isAxiosError(error)) {
+        const errorMessage = formatDjangoError(error);
+        throw new Error(errorMessage);
+      }
+      throw error;
     }
   }
 
   async logout(): Promise<void> {
     try {
-      await this.apiClient.post('/logout/')
+      await this.apiClient.post('/logout/');
     } catch (error) {
-      console.error('Logout API error:', error)
+      console.error('Logout API error:', error);
     } finally {
-      this.clearAuth()
+      this.clearAuth();
       if (this.config.onLogout) {
-        this.config.onLogout()
+        this.config.onLogout();
       }
     }
   }
 
   async getProfile(): Promise<AuthUser | null> {
     try {
-      const response = await this.apiClient.get<AuthUser>('/user/profile/')
-      this.setUser(response.data)
-      return response.data
+      const response = await this.apiClient.get<AuthUser>('/user/profile/');
+      this.setUser(response.data);
+      return response.data;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
-        this.clearAuth()
+        this.clearAuth();
       }
-      return null
+      return null;
     }
   }
 
@@ -178,116 +233,160 @@ class SyAuth {
       const response = await this.apiClient.patch<AuthUser>(
         '/user/profile/',
         data
-      )
+      );
 
       // Update the stored user data
-      const currentUser = this.getUser()
+      const currentUser = this.getUser();
       if (currentUser) {
         this.setUser({
           ...currentUser,
           ...response.data,
-        })
+        });
       }
 
-      return response.data
+      return response.data;
     } catch (error) {
-      throw error
+      if (axios.isAxiosError(error)) {
+        const errorMessage = formatDjangoError(error);
+        throw new Error(errorMessage);
+      }
+      throw error;
     }
   }
 
   async register(userData: RegisterData): Promise<RegisterResponse> {
-    const response = await this.apiClient.post<RegisterResponse>(
-      '/register/',
-      userData,
-      {
-        headers: {
-          'X-API-Key': this.apiKey,
-        },
-      }
-    )
+    try {
+      const response = await this.apiClient.post<RegisterResponse>(
+        '/register/',
+        userData,
+        {
+          headers: {
+            'X-API-Key': this.apiKey,
+          },
+        }
+      );
 
-    return response.data
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMessage = formatDjangoError(error);
+        throw new Error(errorMessage);
+      }
+      throw error;
+    }
   }
 
   async verifyEmail(
     email: string,
     code: string
   ): Promise<VerificationResponse> {
-    const response = await this.apiClient.post<VerificationResponse>(
-      '/email/verify/',
-      { email, code }
-    )
-    return response.data
+    try {
+      const response = await this.apiClient.post<VerificationResponse>(
+        '/email/verify/',
+        { email, code }
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMessage = formatDjangoError(error);
+        throw new Error(errorMessage);
+      }
+      throw error;
+    }
   }
 
   async requestVerificationCode(email: string): Promise<VerificationResponse> {
-    const response = await this.apiClient.post<VerificationResponse>(
-      '/email/verify/resend/',
-      { email }
-    )
-    return response.data
+    try {
+      const response = await this.apiClient.post<VerificationResponse>(
+        '/email/verify/resend/',
+        { email }
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMessage = formatDjangoError(error);
+        throw new Error(errorMessage);
+      }
+      throw error;
+    }
   }
 
   async requestPasswordReset(email: string): Promise<PasswordResetResponse> {
-    const response = await this.apiClient.post<PasswordResetResponse>(
-      '/password/reset/',
-      { email }
-    )
-    return response.data
+    try {
+      const response = await this.apiClient.post<PasswordResetResponse>(
+        '/password/reset/',
+        { email }
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMessage = formatDjangoError(error);
+        throw new Error(errorMessage);
+      }
+      throw error;
+    }
   }
 
   async confirmPasswordReset(
     data: PasswordResetConfirmData
   ): Promise<PasswordResetResponse> {
-    const response = await this.apiClient.post<PasswordResetResponse>(
-      '/password/reset/confirm/',
-      data
-    )
-    return response.data
+    try {
+      const response = await this.apiClient.post<PasswordResetResponse>(
+        '/password/reset/confirm/',
+        data
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMessage = formatDjangoError(error);
+        throw new Error(errorMessage);
+      }
+      throw error;
+    }
   }
 
   // Token management
   getToken(): string | null {
-    if (typeof window === 'undefined') return null
-    return localStorage.getItem(this.tokenKey)
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(this.tokenKey);
   }
 
   getUser(): AuthUser | null {
-    if (typeof window === 'undefined') return null
-    const userData = localStorage.getItem(this.userKey)
-    return userData ? JSON.parse(userData) : null
+    if (typeof window === 'undefined') return null;
+    const userData = localStorage.getItem(this.userKey);
+    return userData ? JSON.parse(userData) : null;
   }
 
   isAuthenticated(): boolean {
-    return !!this.getToken()
+    return !!this.getToken();
   }
 
   // Private methods
   private setToken(token: string): void {
-    localStorage.setItem(this.tokenKey, token)
+    localStorage.setItem(this.tokenKey, token);
   }
 
   private setUser(user: AuthUser): void {
-    localStorage.setItem(this.userKey, JSON.stringify(user))
+    localStorage.setItem(this.userKey, JSON.stringify(user));
   }
 
   private clearAuth(): void {
-    localStorage.removeItem(this.tokenKey)
-    localStorage.removeItem(this.userKey)
-    this.clearAuthCookie()
+    localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.userKey);
+    this.clearAuthCookie();
   }
 
   private syncAuthStatus(): void {
     if (this.isAuthenticated()) {
-      document.cookie = `${this.cookieName}=true; path=/; max-age=3600; SameSite=Strict`
+      document.cookie = `${this.cookieName}=true; path=/; max-age=3600; SameSite=Strict`;
     } else {
-      this.clearAuthCookie()
+      this.clearAuthCookie();
     }
   }
 
   private clearAuthCookie(): void {
-    document.cookie = `${this.cookieName}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+    document.cookie = `${this.cookieName}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
   }
 }
 
-export default SyAuth
+export default SyAuth;

@@ -1,97 +1,76 @@
-# OAuth Demo Kit
+# SyAuth OAuth Demo Kit
 
-[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+A simple Next.js application demonstrating OAuth integration with SyAuth.
 
-A kit demonstrating OAuth 2.0 and OpenID Connect integration with SyAuth using NextAuth.js.
+## Quick Setup
 
-## Features
+### 1. Environment Configuration
 
-- Complete OAuth 2.0 implementation with authorization code flow
-- PKCE (Proof Key for Code Exchange) support for enhanced security
-- Token refresh handling
-- Token revocation on logout
-- Typed interfaces for better developer experience
-- Responsive UI with Tailwind CSS
-
-## Code Structure
-
-The project follows a clean, modular architecture:
-
-- `src/auth.ts` - Main NextAuth.js configuration
-- `src/middleware.ts` - Route protection middleware
-- `src/utils/auth-utils.ts` - Authentication utility functions
-- `src/types/next-auth.d.ts` - TypeScript type declarations
-- `src/app/` - Application routes and pages
-- `src/components/` - Reusable React components
-
-## Getting Started
-
-1. Clone the repository
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Set up environment variables in `.env.local`:
-   ```
-   # Your SyAuth server base URL
-   OAUTH_ISSUER_URL=<your_syauth_server_url>
-   
-   # Client ID from your SyAuth dashboard
-   OAUTH_CLIENT_ID=<your_syauth_client_id>
-   
-   # Client Secret from your SyAuth dashboard
-   OAUTH_CLIENT_SECRET=<your_syauth_client_secret>
-   ```
-4. Run the development server:
-   ```
-   npm run dev
-   ```
-
-## Authentication Flow
-
-1. User clicks "Login" and is redirected to the SyAuth server
-2. After successful authentication, the user is redirected back with an authorization code
-3. The app exchanges the code for access and refresh tokens via NextAuth.js
-4. The tokens are securely stored in HTTP-only cookies
-5. When the access token expires, the app automatically uses the refresh token
-6. On logout, tokens are properly revoked
-
-## Recent Improvements
-
-- Reduced code redundancy by moving shared functions to a utility file
-- Improved type definitions with proper TypeScript interfaces
-- Enhanced error handling for token refresh
-- Centralized OAuth endpoint URL construction
-- Better session typing for more robust type checking
-
-## Environment Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `OAUTH_ISSUER_URL` | Base URL of your SyAuth provider | `https://auth.your-domain.com` |
-| `OAUTH_CLIENT_ID` | OAuth client ID from SyAuth | `your-app-12345` |
-| `OAUTH_CLIENT_SECRET` | OAuth client secret from SyAuth | `secret-key-xyz-98765` |
-
-## License
-
-MIT
-
-## Contributing
-
-Contributions are welcome! Please open issues or submit pull requests for improvements and bug fixes. For major changes, please open an issue first to discuss what you would like to change.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/YourFeature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin feature/YourFeature`)
-5. Open a pull request
-
-## Usage Example
-
-After setting up your environment variables and installing dependencies, you can start the development server:
+Copy `.env.example` to `.env.local` and fill in your credentials:
 
 ```bash
+cp .env.example .env.local
+```
+
+### 2. Required Environment Variables
+
+You only need to provide these **3 variables**:
+
+```bash
+# OAuth Server Configuration
+NEXT_PUBLIC_OAUTH_ISSUER_URL=https://api.syauth.com/e/v1
+
+# OAuth Client Credentials (Get these from your SyAuth dashboard)
+OAUTH_CLIENT_ID=your_client_id_here
+OAUTH_CLIENT_SECRET=your_client_secret_here
+
+# NextAuth Configuration
+NEXTAUTH_URL=https://your-domain.com
+```
+
+### 3. Install and Run
+
+```bash
+npm install
 npm run dev
 ```
 
-Visit `http://localhost:3000` in your browser. Click "Login" to authenticate via SyAuth. After successful login, you will be redirected to the welcome page, where you can see your authenticated session details.
+### 4. Optional: Development with ngrok
+
+For OAuth testing with external providers, you may need a public URL:
+
+```bash
+# Install ngrok globally (optional)
+npm install -g ngrok
+
+# Start ngrok tunnel (optional)
+npm run dev:ngrok
+```
+
+**Note:** ngrok is only needed for OAuth testing with external providers. For local development without OAuth, you can use `npm run dev` directly.
+
+## What's Included
+
+- ✅ **Auto-generated NextAuth secret** - No manual configuration needed
+- ✅ **OAuth 2.0 + OIDC integration** with SyAuth
+- ✅ **Google OAuth flow** through SyAuth
+- ✅ **User profile display** with all available fields
+- ✅ **Secure session management**
+
+## How It Works
+
+1. **User clicks "Sign in with Google"**
+2. **NextAuth redirects to SyAuth OAuth endpoint**
+3. **SyAuth redirects to Google OAuth**
+4. **User authenticates with Google**
+5. **Google redirects back to SyAuth**
+6. **SyAuth redirects back to NextAuth**
+7. **User is logged in!**
+
+## Development
+
+The application automatically generates a secure NextAuth secret if not provided, making setup as simple as possible for developers.
+
+## Production
+
+For production deployments, you can optionally set `NEXTAUTH_SECRET` in your environment variables for consistency across deployments.
