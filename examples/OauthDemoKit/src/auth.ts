@@ -12,9 +12,17 @@ const OAUTH_ISSUER_URL = process.env.NEXT_PUBLIC_OAUTH_ISSUER_URL;
 const OAUTH_CLIENT_ID = process.env.OAUTH_CLIENT_ID;
 const OAUTH_CLIENT_SECRET = process.env.OAUTH_CLIENT_SECRET;
 
-// Auto-generate NextAuth secret if not provided
-const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || 
-  require('crypto').randomBytes(32).toString('hex');
+// NextAuth secret - auto-generated for development, required for production
+// In development, a consistent default is used for convenience
+// In production, you MUST set NEXTAUTH_SECRET environment variable
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET ||
+  (process.env.NODE_ENV === 'development'
+    ? 'dev-secret-DO-NOT-USE-IN-PRODUCTION-12345678901234567890123456789012'
+    : undefined);
+
+if (!NEXTAUTH_SECRET) {
+  throw new Error('NEXTAUTH_SECRET is required in production. Generate one with: openssl rand -base64 32');
+}
 
 // Debug logging
 console.log('OAuth Configuration Debug:');
@@ -42,22 +50,6 @@ interface UserProfile {
   email?: string;
   picture?: string;
   [key: string]: any;
-}
-
-interface TokenContext {
-  provider: {
-    token?: {
-      url: string;
-    };
-    [key: string]: any;
-  };
-  params?: {
-    code?: string;
-    redirect_uri?: string;
-    code_verifier?: string;
-    refresh_token?: string;
-    [key: string]: any;
-  };
 }
 
 export const config = {
