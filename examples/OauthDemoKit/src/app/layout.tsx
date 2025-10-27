@@ -7,8 +7,8 @@ import Navbar from '@/components/navbar'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Next.js with Django OAuth',
-  description: 'A Next.js application integrated with Django OAuth2 provider',
+  title: 'Next.js with Syauth OAuth',
+  description: 'A Next.js application integrated with OAuth2',
 }
 
 export default function RootLayout({
