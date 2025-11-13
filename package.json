@@ -1,0 +1,46 @@
+{
+  "name": "nextjs-syauth",
+  "version": "0.1.4",
+  "description": "A SyAuth SDK for Next.js by Nexorix",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --external react --external axios --external next",
+    "prepublishOnly": "npm run build",
+    "publish:npm": "npm publish"
+  },
+  "keywords": [
+    "nextjs",
+    "authentication",
+    "auth",
+    "syauth",
+    "react",
+    "oauth",
+    "sso"
+  ],
+  "author": "Nexorix",
+  "license": "MIT",
+  "peerDependencies": {
+    "axios": "^1.0.0",
+    "next": ">=13.0.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}

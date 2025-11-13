@@ -52,6 +52,7 @@ export interface PasswordResetResponse {
 export interface SyAuthConfig {
   apiUrl: string;
   apiKey: string;
+  oauthClientId: string;
   onLoginSuccess?: (user: AuthUser) => void;
   onLogout?: () => void;
 }
@@ -61,6 +62,7 @@ export interface RegisterData {
   confirm_password: string;
   first_name: string;
   last_name: string;
+  oauth_client: string;
 }
 
 export interface PasswordResetConfirmData {
@@ -137,6 +139,9 @@ class SyAuth {
 
     if (!config.apiKey) {
       throw new Error('API key is required for SyAuth');
+    }
+    if (!config.oauthClientId) {
+      throw new Error('OAuth Client ID is required for SyAuth');
     }
     // Create API client
     this.apiClient = axios.create({
@@ -283,7 +288,11 @@ class SyAuth {
     try {
       const response = await this.apiClient.post<VerificationResponse>(
         '/email/verify/',
-        { email, code }
+        {
+          email,
+          code,
+          oauth_client: this.config.oauthClientId
+        }
       );
       return response.data;
     } catch (error) {
@@ -299,7 +308,10 @@ class SyAuth {
     try {
       const response = await this.apiClient.post<VerificationResponse>(
         '/email/verify/resend/',
-        { email }
+        {
+          email,
+          oauth_client: this.config.oauthClientId
+        }
       );
       return response.data;
     } catch (error) {
@@ -315,7 +327,10 @@ class SyAuth {
     try {
       const response = await this.apiClient.post<PasswordResetResponse>(
         '/password/reset/',
-        { email }
+        {
+          email,
+          oauth_client: this.config.oauthClientId
+        }
       );
       return response.data;
     } catch (error) {
@@ -333,7 +348,10 @@ class SyAuth {
     try {
       const response = await this.apiClient.post<PasswordResetResponse>(
         '/password/reset/confirm/',
-        data
+        {
+          ...data,
+          oauth_client: this.config.oauthClientId
+        }
       );
       return response.data;
     } catch (error) {
@@ -359,6 +377,10 @@ class SyAuth {
 
   isAuthenticated(): boolean {
     return !!this.getToken();
+  }
+
+  getOAuthClientId(): string {
+    return this.config.oauthClientId;
   }
 
   // Private methods

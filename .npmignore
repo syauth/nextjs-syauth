@@ -1,0 +1,9 @@
+src/
+examples/
+.git/
+.gitignore
+tsconfig.json
+*.log
+node_modules/
+.env*
+CODE_OF_CONDUCT.md
