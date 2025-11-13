@@ -6,17 +6,18 @@ import { useSyAuth } from 'nextjs-syauth'
 import Link from 'next/link'
 
 export default function RegisterPage() {
+  const { register, authClient } = useSyAuth()
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirm_password: '',
     first_name: '',
     last_name: '',
+    oauth_client: authClient.getOAuthClientId(),
   })
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-
-  const { register } = useSyAuth()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target

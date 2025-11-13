@@ -17,6 +17,7 @@ interface AuthContextType {
   loading: boolean
   error: string | null
   isAuthenticated: boolean
+  authClient: SyAuth
   login: (
     email: string,
     password: string,
@@ -297,6 +298,7 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
     loading,
     error,
     isAuthenticated,
+    authClient,
     login,
     logout,
     register,
