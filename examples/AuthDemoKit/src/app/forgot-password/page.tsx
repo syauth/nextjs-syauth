@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { Form, Button, Card, Alert } from 'react-bootstrap'
 import { useSyAuth } from 'nextjs-syauth'
 import Link from 'next/link'
+import { sanitizeErrorMessage } from '@/utils/errorMessages'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -25,14 +26,9 @@ export default function ForgotPasswordPage() {
       })
       setEmail('')
     } catch (error) {
-      if (error instanceof Error) {
-        setMessage({ type: 'danger', text: error.message })
-      } else {
-        setMessage({
-          type: 'danger',
-          text: 'Failed to send reset code. Please try again later.',
-        })
-      }
+      // Sanitize error message to prevent backend information disclosure
+      const sanitized = sanitizeErrorMessage(error)
+      setMessage({ type: 'danger', text: sanitized })
     } finally {
       setLoading(false)
     }
