@@ -1,6 +1,7 @@
 import { auth } from './auth'
 
 // Export the auth middleware
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default auth((req: { auth?: any; nextUrl?: any }) => {
   const { nextUrl } = req
   const isLoggedIn = !!req.auth
