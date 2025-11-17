@@ -3,7 +3,7 @@
  */
 
 // Get configuration from environment variables
-const OAUTH_ISSUER_URL = process.env.NEXT_PUBLIC_OAUTH_ISSUER_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const OAUTH_CLIENT_ID = process.env.OAUTH_CLIENT_ID;
 const OAUTH_CLIENT_SECRET = process.env.OAUTH_CLIENT_SECRET;
 
@@ -11,14 +11,14 @@ const OAUTH_CLIENT_SECRET = process.env.OAUTH_CLIENT_SECRET;
  * Create a token endpoint URL
  */
 export const getTokenUrl = (): string => {
-  return `${OAUTH_ISSUER_URL}/oauth/token/`;
+  return `${API_URL}/oauth/token/`;
 };
 
 /**
  * Create a token revocation endpoint URL
  */
 export const getTokenRevocationUrl = (): string => {
-  return `${OAUTH_ISSUER_URL}/oauth/revoke/`;
+  return `${API_URL}/oauth/revoke/`;
 };
 
 /**
