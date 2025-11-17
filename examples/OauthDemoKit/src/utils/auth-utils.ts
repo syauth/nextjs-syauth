@@ -43,6 +43,7 @@ export const formatDate = (timestamp: number | null | undefined): string => {
 /**
  * Extract user profile data from the profile object
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const extractUserProfile = (profile: any) => {
   // Check if any name information is available
   let name = null;

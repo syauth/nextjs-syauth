@@ -49,7 +49,8 @@ interface UserProfile {
   family_name?: string;
   email?: string;
   picture?: string;
-  [key: string]: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any; // OAuth providers return dynamic fields
 }
 
 export const config = {
@@ -84,7 +85,7 @@ export const config = {
   ],
 
   callbacks: {
-    // @ts-ignore
+    // @ts-expect-error - NextAuth v5 beta has incomplete callback types
     async jwt({ token, account, user }) {
       // Initial sign in
       if (account && user) {
@@ -159,7 +160,7 @@ export const config = {
       return token;
     },
 
-    // @ts-ignore
+    // @ts-expect-error - NextAuth v5 beta has incomplete callback types
     async session({ session, token }) {
       session.accessToken = token.accessToken;
       session.error = token.error;
@@ -183,7 +184,7 @@ export const config = {
   },
 
   events: {
-    // @ts-ignore
+    // @ts-expect-error - NextAuth v5 beta has incomplete event types
     async signOut({ token }) {
       // Call to revoke the token
       if (token?.accessToken) {
@@ -232,5 +233,5 @@ export const config = {
   },
 };
 
-// @ts-ignore
+// @ts-expect-error - NextAuth v5 beta export types are incomplete
 export const { handlers, auth, signIn, signOut } = NextAuth(config);
