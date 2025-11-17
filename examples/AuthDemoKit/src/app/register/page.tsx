@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { Form, Button, Card, Alert, Row, Col } from 'react-bootstrap'
 import { useSyAuth } from 'nextjs-syauth'
 import Link from 'next/link'
+import { sanitizeErrorMessage } from '@/utils/errorMessages'
 
 export default function RegisterPage() {
   const { register, authClient } = useSyAuth()
@@ -33,11 +34,9 @@ export default function RegisterPage() {
       await register(formData)
       // The redirection will be handled by the register function in the auth context
     } catch (error) {
-      if (error instanceof Error) {
-        setErrorMessage(error.message)
-      } else {
-        setErrorMessage('Registration failed. Please try again.')
-      }
+      // Sanitize error message to prevent backend information disclosure
+      const sanitized = sanitizeErrorMessage(error)
+      setErrorMessage(sanitized)
       setLoading(false)
     }
   }

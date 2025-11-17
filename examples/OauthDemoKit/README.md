@@ -18,7 +18,7 @@ You only need to provide these **3 variables**:
 
 ```bash
 # OAuth Server Configuration
-NEXT_PUBLIC_OAUTH_ISSUER_URL=https://api.syauth.com/e/v1
+NEXT_PUBLIC_API_URL=https://api.syauth.com/e/v1
 
 # OAuth Client Credentials (Get these from your SyAuth dashboard)
 OAUTH_CLIENT_ID=your_client_id_here

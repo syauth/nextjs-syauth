@@ -30,8 +30,8 @@ export default function AuthError() {
 
     // Get environment variables
     const env = {
-      NEXT_PUBLIC_DJANGO_API_URL:
-        process.env.NEXT_PUBLIC_DJANGO_API_URL || 'Not set',
+      NEXT_PUBLIC_API_URL:
+        process.env.NEXT_PUBLIC_API_URL || 'Not set',
       OAUTH_CLIENT_ID: process.env.OAUTH_CLIENT_ID
         ? 'Set (starts with: ' +
           process.env.OAUTH_CLIENT_ID.substring(0, 4) +
@@ -51,9 +51,9 @@ export default function AuthError() {
     // Attempt to read NextAuth config details
     try {
       const configDetails = {
-        authURL: `${process.env.NEXT_PUBLIC_DJANGO_API_URL}/oauth/authorize/`,
-        tokenURL: `${process.env.NEXT_PUBLIC_DJANGO_API_URL}/oauth/token/`,
-        userinfoURL: `${process.env.NEXT_PUBLIC_DJANGO_API_URL}/oauth/userinfo/`,
+        authURL: `${process.env.NEXT_PUBLIC_API_URL}/oauth/authorize/`,
+        tokenURL: `${process.env.NEXT_PUBLIC_API_URL}/oauth/token/`,
+        userinfoURL: `${process.env.NEXT_PUBLIC_API_URL}/oauth/userinfo/`,
         callbackURL: `${process.env.NEXTAUTH_URL}/api/auth/callback/django`,
       };
       setNextAuthConfig(configDetails);

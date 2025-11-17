@@ -5,6 +5,7 @@ import { Form, Button, Card, Alert } from 'react-bootstrap'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSyAuth } from 'nextjs-syauth'
 import Link from 'next/link'
+import { sanitizeErrorMessage } from '@/utils/errorMessages'
 
 // Create a separate component that uses search params
 function LoginForm() {
@@ -61,13 +62,9 @@ function LoginForm() {
       await login(email, password, rememberMe)
       // The redirection will be handled by the login function in the auth context
     } catch (error) {
-      if (error instanceof Error) {
-        setErrorMessage(error.message)
-      } else {
-        setErrorMessage(
-          'Login failed. Please check your credentials and try again.'
-        )
-      }
+      // Sanitize error message to prevent backend information disclosure
+      const sanitized = sanitizeErrorMessage(error)
+      setErrorMessage(sanitized)
       setLoading(false)
     }
   }

@@ -8,7 +8,7 @@ import {
 } from './utils/auth-utils';
 
 // Get configuration from environment variables
-const OAUTH_ISSUER_URL = process.env.NEXT_PUBLIC_OAUTH_ISSUER_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const OAUTH_CLIENT_ID = process.env.OAUTH_CLIENT_ID;
 const OAUTH_CLIENT_SECRET = process.env.OAUTH_CLIENT_SECRET;
 
@@ -26,14 +26,14 @@ if (!NEXTAUTH_SECRET) {
 
 // Debug logging
 console.log('OAuth Configuration Debug:');
-console.log('OAUTH_ISSUER_URL:', OAUTH_ISSUER_URL);
+console.log('API_URL:', API_URL);
 console.log('OAUTH_CLIENT_ID:', OAUTH_CLIENT_ID ? 'Set' : 'Not set');
 console.log('OAUTH_CLIENT_SECRET:', OAUTH_CLIENT_SECRET ? 'Set' : 'Not set');
 console.log('NEXTAUTH_SECRET:', NEXTAUTH_SECRET ? 'Auto-generated' : 'Not set');
 
 // Validate required environment variables
-if (!OAUTH_ISSUER_URL) {
-  throw new Error('NEXT_PUBLIC_OAUTH_ISSUER_URL is required');
+if (!API_URL) {
+  throw new Error('NEXT_PUBLIC_API_URL is required');
 }
 if (!OAUTH_CLIENT_ID) {
   throw new Error('OAUTH_CLIENT_ID is required');
@@ -61,10 +61,10 @@ export const config = {
 
       // OAuth2 with OIDC - Django returns ID tokens
       // Set issuer to match Django's OIDC_ISSUER
-      issuer: OAUTH_ISSUER_URL,
-      authorization: `${OAUTH_ISSUER_URL}/oauth/authorize/`,
+      issuer: API_URL,
+      authorization: `${API_URL}/oauth/authorize/`,
       token: getTokenUrl(),
-      userinfo: `${OAUTH_ISSUER_URL}/oauth/userinfo/`,
+      userinfo: `${API_URL}/oauth/userinfo/`,
 
       // Client credentials
       clientId: OAUTH_CLIENT_ID,
