@@ -73,7 +73,6 @@ export interface OAuthCallbackParams {
 export interface SyAuthConfig {
   apiUrl: string;
   apiKey?: string; // Optional - only required for registration endpoint
-  workspaceId?: string; // Optional - only required for registration endpoint
   oauthClientId: string;
   redirectUri?: string; // OAuth 2.0 redirect URI (required for OAuth flow)
   scopes?: string; // OAuth scopes (default: "openid profile email")
@@ -340,17 +339,12 @@ class SyAuth {
       throw new Error('API key is required for user registration. Please provide apiKey in SyAuthConfig.');
     }
 
-    if (!this.config.workspaceId) {
-      throw new Error('Workspace ID is required for user registration. Please provide workspaceId in SyAuthConfig.');
-    }
-
     try {
       const response = await this.apiClient.post<RegisterResponse>(
         '/register/',
         {
           ...userData,
           oauth_client: this.config.oauthClientId,
-          workspace: this.config.workspaceId,
         },
         {
           headers: {
