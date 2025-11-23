@@ -1,6 +1,6 @@
 {
   "name": "@syauth/nextjs",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "OAuth 2.0 Authentication SDK for Next.js with PKCE support - Part of SyAuth by Nexorix",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
