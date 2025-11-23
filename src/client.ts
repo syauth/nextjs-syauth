@@ -1,4 +1,11 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import {
+  generatePKCEPair,
+  generateState,
+  storePKCEParams,
+  retrievePKCEParams,
+  clearPKCEParams,
+} from './utils/pkce';
 
 export interface AuthUser {
   id: string;
@@ -49,10 +56,26 @@ export interface PasswordResetResponse {
   success: boolean;
 }
 
+export interface OAuthTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token?: string;
+  id_token?: string;
+  scope?: string;
+}
+
+export interface OAuthCallbackParams {
+  code: string;
+  state: string;
+}
+
 export interface SyAuthConfig {
   apiUrl: string;
-  apiKey: string;
+  apiKey?: string; // Optional - only required for registration endpoint
   oauthClientId: string;
+  redirectUri?: string; // OAuth 2.0 redirect URI (required for OAuth flow)
+  scopes?: string; // OAuth scopes (default: "openid profile email")
   onLoginSuccess?: (user: AuthUser) => void;
   onLogout?: () => void;
 }
@@ -126,20 +149,22 @@ class SyAuth {
   private apiClient: AxiosInstance;
   private config: SyAuthConfig;
   private tokenKey: string;
+  private refreshTokenKey: string;
+  private tokenExpiryKey: string;
   private userKey: string;
   private cookieName: string;
-  private apiKey: string;
+  private apiKey?: string;
+  private refreshPromise: Promise<string> | null = null;
 
   constructor(config: SyAuthConfig) {
     this.config = config;
     this.tokenKey = 'auth_token';
+    this.refreshTokenKey = 'auth_refresh_token';
+    this.tokenExpiryKey = 'auth_token_expiry';
     this.userKey = 'auth_user';
     this.cookieName = 'auth_status';
     this.apiKey = config.apiKey;
 
-    if (!config.apiKey) {
-      throw new Error('API key is required for SyAuth');
-    }
     if (!config.oauthClientId) {
       throw new Error('OAuth Client ID is required for SyAuth');
     }
@@ -151,16 +176,57 @@ class SyAuth {
       },
     });
 
-    // Add token interceptor
+    // Add token interceptor - automatically add auth header
     this.apiClient.interceptors.request.use(
-      config => {
-        const token = this.getToken();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
+      async (config) => {
+        // Skip token for certain endpoints
+        const skipTokenEndpoints = ['/oauth/token/', '/register/', '/login/'];
+        const isSkipEndpoint = skipTokenEndpoints.some(endpoint =>
+          config.url?.includes(endpoint)
+        );
+
+        if (!isSkipEndpoint) {
+          try {
+            const token = await this.getValidToken();
+            if (token) {
+              config.headers.Authorization = `Bearer ${token}`;
+            }
+          } catch (error) {
+            // If token refresh fails, let the request proceed without token
+            // The 401 response will trigger logout
+          }
         }
         return config;
       },
       error => Promise.reject(error)
+    );
+
+    // Add response interceptor to handle 401 errors
+    this.apiClient.interceptors.response.use(
+      response => response,
+      async (error) => {
+        const originalRequest = error.config;
+
+        // If 401 and we haven't already retried
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          try {
+            // Try to refresh the token
+            const newToken = await this.refreshAccessToken();
+
+            // Retry original request with new token
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return this.apiClient(originalRequest);
+          } catch (refreshError) {
+            // Refresh failed - clear auth and reject
+            this.clearAuth();
+            return Promise.reject(refreshError);
+          }
+        }
+
+        return Promise.reject(error);
+      }
     );
 
     // Initialize auth status
@@ -170,11 +236,20 @@ class SyAuth {
   }
 
   // Authentication methods
+  /**
+   * @deprecated Use loginWithRedirect() for OAuth 2.0 Authorization Code Flow.
+   * Password grant is deprecated in OAuth 2.1 and may be removed in future versions.
+   */
   async login(
     email: string,
     password: string,
     remember_me: boolean = false
   ): Promise<AuthUser> {
+    console.warn(
+      '[SyAuth] Warning: login() uses password grant which is deprecated in OAuth 2.1. ' +
+      'Consider using loginWithRedirect() for better security.'
+    );
+
     try {
       const response = await this.apiClient.post<AuthResponse>('/login/', {
         email,
@@ -260,6 +335,10 @@ class SyAuth {
   }
 
   async register(userData: RegisterData): Promise<RegisterResponse> {
+    if (!this.apiKey) {
+      throw new Error('API key is required for user registration. Please provide apiKey in SyAuthConfig.');
+    }
+
     try {
       const response = await this.apiClient.post<RegisterResponse>(
         '/register/',
@@ -363,6 +442,269 @@ class SyAuth {
     }
   }
 
+  // OAuth 2.0 Authorization Code Flow with PKCE
+
+  /**
+   * Initiate OAuth 2.0 login by redirecting to the authorization endpoint
+   * Uses PKCE (Proof Key for Code Exchange) for security
+   *
+   * @param redirectTo - Optional path to redirect to after successful authentication
+   */
+  async loginWithRedirect(redirectTo?: string): Promise<void> {
+    if (typeof window === 'undefined') {
+      throw new Error('loginWithRedirect can only be called in the browser');
+    }
+
+    if (!this.config.redirectUri) {
+      throw new Error(
+        'redirectUri is required in SyAuthConfig to use OAuth 2.0 flow. ' +
+        'Please provide it during initialization.'
+      );
+    }
+
+    // Generate PKCE parameters
+    const { verifier, challenge } = await generatePKCEPair();
+    const state = generateState();
+
+    // Store PKCE parameters in session storage
+    storePKCEParams(verifier, state, redirectTo);
+
+    // Build authorization URL
+    const authUrl = this.buildAuthorizationUrl(challenge, state);
+
+    // Redirect to authorization endpoint
+    window.location.href = authUrl;
+  }
+
+  /**
+   * Handle OAuth callback and exchange authorization code for tokens
+   * Should be called on the redirect URI page
+   *
+   * @param params - Callback parameters (code, state) from URL
+   * @returns The authenticated user
+   */
+  async handleOAuthCallback(params: OAuthCallbackParams): Promise<AuthUser> {
+    if (typeof window === 'undefined') {
+      throw new Error('handleOAuthCallback can only be called in the browser');
+    }
+
+    // Retrieve stored PKCE parameters
+    const { verifier, state: storedState } = retrievePKCEParams();
+
+    // Validate state parameter (CSRF protection)
+    if (!storedState || storedState !== params.state) {
+      clearPKCEParams();
+      throw new Error(
+        'Invalid state parameter. Possible CSRF attack or expired session.'
+      );
+    }
+
+    if (!verifier) {
+      clearPKCEParams();
+      throw new Error(
+        'Code verifier not found. Please initiate login again.'
+      );
+    }
+
+    try {
+      // Exchange authorization code for tokens
+      const tokenResponse = await this.exchangeCodeForToken(
+        params.code,
+        verifier
+      );
+
+      // Store the access token, refresh token, and expiry
+      this.setToken(tokenResponse.access_token);
+      if (tokenResponse.refresh_token) {
+        this.setRefreshToken(tokenResponse.refresh_token);
+      }
+      if (tokenResponse.expires_in) {
+        const expiryTime = Date.now() + tokenResponse.expires_in * 1000;
+        this.setTokenExpiry(expiryTime);
+      }
+
+      // Get user profile using the access token
+      const user = await this.getProfile();
+
+      if (!user) {
+        throw new Error('Failed to retrieve user profile');
+      }
+
+      // Clear PKCE parameters
+      clearPKCEParams();
+
+      // Sync auth status
+      this.syncAuthStatus();
+
+      // Call success callback
+      if (this.config.onLoginSuccess) {
+        this.config.onLoginSuccess(user);
+      }
+
+      return user;
+    } catch (error) {
+      clearPKCEParams();
+      if (axios.isAxiosError(error)) {
+        const errorMessage = formatDjangoError(error);
+        throw new Error(errorMessage);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Exchange authorization code for access token
+   * Calls the /oauth/token/ endpoint with PKCE verification
+   *
+   * @param code - Authorization code from callback
+   * @param codeVerifier - PKCE code verifier
+   * @returns Token response
+   */
+  private async exchangeCodeForToken(
+    code: string,
+    codeVerifier: string
+  ): Promise<OAuthTokenResponse> {
+    if (!this.config.redirectUri) {
+      throw new Error('redirectUri is required for token exchange');
+    }
+
+    try {
+      // Note: /oauth/token/ endpoint already has CSRF exempt + wildcard CORS
+      const response = await this.apiClient.post<OAuthTokenResponse>(
+        '/oauth/token/',
+        new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: code,
+          redirect_uri: this.config.redirectUri,
+          client_id: this.config.oauthClientId,
+          code_verifier: codeVerifier,
+        }).toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMessage = formatDjangoError(error);
+        throw new Error(`Token exchange failed: ${errorMessage}`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Refresh the access token using the refresh token
+   * @returns New access token
+   */
+  private async refreshAccessToken(): Promise<string> {
+    const refreshToken = this.getRefreshToken();
+
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    try {
+      const response = await this.apiClient.post<OAuthTokenResponse>(
+        '/oauth/token/',
+        new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+          client_id: this.config.oauthClientId,
+        }).toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      // Store new tokens
+      this.setToken(response.data.access_token);
+      if (response.data.refresh_token) {
+        this.setRefreshToken(response.data.refresh_token);
+      }
+      if (response.data.expires_in) {
+        const expiryTime = Date.now() + response.data.expires_in * 1000;
+        this.setTokenExpiry(expiryTime);
+      }
+
+      return response.data.access_token;
+    } catch (error) {
+      // If refresh fails, clear auth and force re-login
+      this.clearAuth();
+      throw new Error('Token refresh failed. Please log in again.');
+    }
+  }
+
+  /**
+   * Get a valid access token, refreshing if necessary
+   * @returns Valid access token
+   */
+  async getValidToken(): Promise<string | null> {
+    const token = this.getToken();
+
+    if (!token) {
+      return null;
+    }
+
+    // If token is expired or about to expire, refresh it
+    if (this.isTokenExpired()) {
+      try {
+        // Prevent multiple simultaneous refresh requests
+        if (this.refreshPromise) {
+          return await this.refreshPromise;
+        }
+
+        this.refreshPromise = this.refreshAccessToken();
+        const newToken = await this.refreshPromise;
+        this.refreshPromise = null;
+        return newToken;
+      } catch (error) {
+        this.refreshPromise = null;
+        throw error;
+      }
+    }
+
+    return token;
+  }
+
+  /**
+   * Build the OAuth authorization URL with PKCE parameters
+   *
+   * @param codeChallenge - PKCE code challenge
+   * @param state - State parameter for CSRF protection
+   * @returns Complete authorization URL
+   */
+  private buildAuthorizationUrl(codeChallenge: string, state: string): string {
+    const scopes = this.config.scopes || 'openid profile email';
+
+    const params = new URLSearchParams({
+      client_id: this.config.oauthClientId,
+      redirect_uri: this.config.redirectUri!,
+      response_type: 'code',
+      scope: scopes,
+      state: state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
+    });
+
+    return `${this.config.apiUrl}/oauth/authorize/?${params.toString()}`;
+  }
+
+  /**
+   * Get the redirect path stored during login initiation
+   *
+   * @returns The redirect path or null
+   */
+  getStoredRedirectPath(): string | null {
+    const { redirectTo } = retrievePKCEParams();
+    return redirectTo;
+  }
+
   // Token management
   getToken(): string | null {
     if (typeof window === 'undefined') return null;
@@ -388,12 +730,40 @@ class SyAuth {
     localStorage.setItem(this.tokenKey, token);
   }
 
+  private setRefreshToken(token: string): void {
+    localStorage.setItem(this.refreshTokenKey, token);
+  }
+
+  private getRefreshToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(this.refreshTokenKey);
+  }
+
+  private setTokenExpiry(expiryTime: number): void {
+    localStorage.setItem(this.tokenExpiryKey, expiryTime.toString());
+  }
+
+  private getTokenExpiry(): number | null {
+    if (typeof window === 'undefined') return null;
+    const expiry = localStorage.getItem(this.tokenExpiryKey);
+    return expiry ? parseInt(expiry, 10) : null;
+  }
+
+  private isTokenExpired(): boolean {
+    const expiry = this.getTokenExpiry();
+    if (!expiry) return false;
+    // Consider token expired if within 5 minutes of expiry
+    return Date.now() >= expiry - 5 * 60 * 1000;
+  }
+
   private setUser(user: AuthUser): void {
     localStorage.setItem(this.userKey, JSON.stringify(user));
   }
 
   private clearAuth(): void {
     localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.refreshTokenKey);
+    localStorage.removeItem(this.tokenExpiryKey);
     localStorage.removeItem(this.userKey);
     this.clearAuthCookie();
   }

@@ -1,5 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+/**
+ * Validates a redirect URL to prevent open redirect vulnerabilities
+ * Only allows relative paths (starting with /) or same-origin URLs
+ */
+function isValidRedirectUrl(url: string, requestUrl: string): boolean {
+  // Empty or undefined URLs are invalid
+  if (!url || typeof url !== 'string') {
+    return false
+  }
+
+  // Must start with / for relative paths
+  if (!url.startsWith('/')) {
+    return false
+  }
+
+  // Prevent protocol-relative URLs (//evil.com)
+  if (url.startsWith('//')) {
+    return false
+  }
+
+  // Prevent javascript: data: and other dangerous protocols
+  const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:', 'about:']
+  const lowercaseUrl = url.toLowerCase()
+  if (dangerousProtocols.some(protocol => lowercaseUrl.includes(protocol))) {
+    return false
+  }
+
+  // For additional safety, parse as URL and check it's relative
+  try {
+    const parsed = new URL(url, requestUrl)
+    const request = new URL(requestUrl)
+    // Only allow same origin
+    return parsed.origin === request.origin
+  } catch {
+    // If URL parsing fails, only allow if it starts with / (relative path)
+    return url.startsWith('/') && !url.startsWith('//')
+  }
+}
+
+/**
+ * Configuration options for the SyAuth middleware
+ */
 export interface MiddlewareOptions {
   /**
    * Routes that require authentication. User will be redirected to
@@ -9,6 +51,7 @@ export interface MiddlewareOptions {
 
   /**
    * Public authentication routes (login, register, etc.)
+   * Defaults to: ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/auth/callback']
    */
   authRoutes?: string[]
 
@@ -19,19 +62,22 @@ export interface MiddlewareOptions {
 
   /**
    * URL to redirect to after successful login
+   * Defaults to: '/dashboard'
    */
   defaultProtectedRoute?: string
 
   /**
    * Cookie name that indicates authentication status
+   * Defaults to: 'auth_status'
    */
   authCookieName?: string
 }
 
 /**
- * Middleware helper for SyAuth
+ * Core middleware function that processes authentication
+ * @internal
  */
-export function withAuth(
+function withAuthHandler(
   request: NextRequest,
   options: MiddlewareOptions
 ): NextResponse {
@@ -47,6 +93,7 @@ export function withAuth(
     '/forgot-password',
     '/reset-password',
     '/verify-email',
+    '/auth/callback', // OAuth callback route (public, no auth required)
   ]
 
   // Check if the path is protected
@@ -60,15 +107,23 @@ export function withAuth(
     (authPath) => path === authPath || path.startsWith(`${authPath}/`)
   )
 
+  // Check if this is the OAuth callback route
+  const isCallbackRoute = path === '/auth/callback' || path.startsWith('/auth/callback/')
+
   // Check for authentication via cookie
   const isAuthenticated = request.cookies.has(authCookieName)
 
   // Get return_to parameter if present
   const returnTo = request.nextUrl.searchParams.get('return_to')
 
-  // If authenticated and on an auth page, redirect to default protected route or return_to
-  if (isAuthenticated && isAuthPath) {
-    const redirectUrl = returnTo || defaultProtectedRoute
+  // If authenticated and on an auth page (but NOT callback), redirect to default protected route or return_to
+  // Callback route is allowed even when authenticated to complete OAuth flow
+  if (isAuthenticated && isAuthPath && !isCallbackRoute) {
+    // Validate return_to URL to prevent open redirect vulnerability
+    let redirectUrl = defaultProtectedRoute
+    if (returnTo && isValidRedirectUrl(returnTo, request.url)) {
+      redirectUrl = returnTo
+    }
     return NextResponse.redirect(new URL(redirectUrl, request.url))
   }
 
@@ -99,4 +154,61 @@ export function withAuth(
 
   // Otherwise continue with the request
   return NextResponse.next()
+}
+
+/**
+ * Middleware helper for SyAuth authentication
+ * 
+ * This function is designed to work in Next.js Edge Runtime and does not include
+ * any React dependencies. Use this in your middleware.ts file to protect routes.
+ * 
+ * Can be used in two ways:
+ * 1. Convenient pattern (recommended): `withAuth(options)` - returns a middleware function
+ * 2. Advanced pattern: `withAuth(request, options)` - directly processes the request
+ * 
+ * @example
+ * ```typescript
+ * // Convenient pattern (recommended)
+ * import { withAuth } from '@syauth/nextjs/middleware'
+ * 
+ * export default withAuth({
+ *   protectedRoutes: ['/dashboard', '/profile'],
+ *   loginUrl: '/login',
+ *   defaultProtectedRoute: '/dashboard'
+ * })
+ * ```
+ * 
+ * @example
+ * ```typescript
+ * // Advanced pattern
+ * import { NextRequest } from 'next/server'
+ * import { withAuth } from '@syauth/nextjs/middleware'
+ * 
+ * export default function middleware(request: NextRequest) {
+ *   return withAuth(request, {
+ *     protectedRoutes: ['/dashboard'],
+ *     loginUrl: '/login'
+ *   })
+ * }
+ * ```
+ */
+export function withAuth(
+  options: MiddlewareOptions
+): (request: NextRequest) => NextResponse
+export function withAuth(
+  request: NextRequest,
+  options: MiddlewareOptions
+): NextResponse
+export function withAuth(
+  requestOrOptions: NextRequest | MiddlewareOptions,
+  options?: MiddlewareOptions
+): NextResponse | ((request: NextRequest) => NextResponse) {
+  // If only one argument is provided, return a middleware function
+  if (!options) {
+    const opts = requestOrOptions as MiddlewareOptions
+    return (request: NextRequest) => withAuthHandler(request, opts)
+  }
+  
+  // If two arguments are provided, process the request directly
+  return withAuthHandler(requestOrOptions as NextRequest, options)
 }

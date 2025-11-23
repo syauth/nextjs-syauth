@@ -1,7 +1,7 @@
 {
-  "name": "nextjs-syauth",
-  "version": "0.1.4",
-  "description": "A SyAuth SDK for Next.js by Nexorix",
+  "name": "@syauth/nextjs",
+  "version": "0.2.2",
+  "description": "OAuth 2.0 Authentication SDK for Next.js with PKCE support - Part of SyAuth by Nexorix",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -10,15 +10,30 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./middleware": {
+      "types": "./dist/middleware.d.ts",
+      "edge-light": "./dist/middleware.mjs",
+      "import": "./dist/middleware.mjs",
+      "require": "./dist/middleware.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.mjs",
+      "require": "./dist/server.js"
     }
   },
+  "sideEffects": false,
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --external react --external axios --external next",
+    "build": "tsup src/index.ts src/middleware.ts src/server.ts --format cjs,esm --dts --external react --external react-dom --external next --external next/navigation --external next/server --external axios",
     "prepublishOnly": "npm run build",
     "publish:npm": "npm publish"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "keywords": [
     "nextjs",
@@ -31,6 +46,14 @@
   ],
   "author": "Nexorix",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/syauth/nextjs-syauth.git"
+  },
+  "homepage": "https://github.com/syauth/nextjs-syauth#readme",
+  "bugs": {
+    "url": "https://github.com/syauth/nextjs-syauth/issues"
+  },
   "peerDependencies": {
     "axios": "^1.0.0",
     "next": ">=13.0.0",

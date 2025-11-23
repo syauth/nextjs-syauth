@@ -9,7 +9,26 @@ import SyAuth, {
   VerificationResponse,
   PasswordResetResponse,
   ProfileUpdateData,
+  OAuthCallbackParams,
 } from './client'
+
+/**
+ * Validates a redirect URL to prevent open redirect vulnerabilities
+ * Only allows relative paths starting with /
+ */
+function isValidRedirectUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') {
+    return false
+  }
+  // Must start with / and NOT be protocol-relative (//)
+  if (!url.startsWith('/') || url.startsWith('//')) {
+    return false
+  }
+  // Prevent dangerous protocols
+  const dangerous = ['javascript:', 'data:', 'vbscript:', 'file:', 'about:']
+  const lower = url.toLowerCase()
+  return !dangerous.some(protocol => lower.includes(protocol))
+}
 
 // Context type
 interface AuthContextType {
@@ -23,6 +42,8 @@ interface AuthContextType {
     password: string,
     remember_me?: boolean
   ) => Promise<void>
+  loginWithRedirect: (redirectTo?: string) => Promise<void>
+  handleOAuthCallback: (params: OAuthCallbackParams) => Promise<void>
   logout: () => Promise<void>
   register: (userData: RegisterData) => Promise<void>
   updateProfile: (data: ProfileUpdateData) => Promise<AuthUser>
@@ -60,37 +81,53 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
 
   // Check authentication on mount
   useEffect(() => {
+    let cancelled = false
+
     const checkAuth = async () => {
       try {
-        setLoading(true)
+        if (!cancelled) {
+          setLoading(true)
+        }
 
         // First check if we already have a user in storage
         const storedUser = authClient.getUser()
-        if (storedUser) {
+        if (storedUser && !cancelled) {
           setUser(storedUser)
           setIsAuthenticated(true)
         }
 
-        // Then try to fetch the latest profile
+        // Then try to fetch the latest profile (will auto-refresh token if needed)
         const userData = await authClient.getProfile()
-        if (userData) {
+        if (userData && !cancelled) {
           setUser(userData)
           setIsAuthenticated(true)
-        } else if (!storedUser) {
+        } else if (!storedUser && !cancelled) {
           setUser(null)
           setIsAuthenticated(false)
         }
       } catch (error) {
-        console.error('Auth check error:', error)
+        if (!cancelled) {
+          // If profile fetch fails (including refresh failure), clear auth state
+          console.error('Auth check error:', error)
+          setUser(null)
+          setIsAuthenticated(false)
+        }
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
     }
 
     checkAuth()
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      cancelled = true
+    }
   }, [authClient])
 
-  // Login function
+  // Login function (deprecated - use loginWithRedirect for OAuth 2.0)
   const login = async (
     email: string,
     password: string,
@@ -104,12 +141,12 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
       setUser(userData)
       setIsAuthenticated(true)
 
-      // Check for return_to parameter in URL
+      // Check for return_to parameter in URL with validation
       let returnTo = redirectAfterLogin
       if (typeof window !== 'undefined') {
         const params = new URLSearchParams(window.location.search)
         const returnToParam = params.get('return_to')
-        if (returnToParam) {
+        if (returnToParam && isValidRedirectUrl(returnToParam)) {
           returnTo = returnToParam
         }
       }
@@ -117,6 +154,57 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
       router.push(returnTo)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed'
+      setError(errorMessage)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // OAuth 2.0 login with redirect (recommended)
+  const loginWithRedirect = async (redirectTo?: string) => {
+    try {
+      setError(null)
+      // Determine redirect path
+      let redirectPath = redirectTo || redirectAfterLogin
+
+      // Check for return_to parameter in URL with validation
+      if (typeof window !== 'undefined' && !redirectTo) {
+        const params = new URLSearchParams(window.location.search)
+        const returnToParam = params.get('return_to')
+        if (returnToParam && isValidRedirectUrl(returnToParam)) {
+          redirectPath = returnToParam
+        }
+      }
+
+      // Initiate OAuth flow (will redirect to authorization endpoint)
+      await authClient.loginWithRedirect(redirectPath)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'OAuth login failed'
+      setError(errorMessage)
+      throw err
+    }
+  }
+
+  // Handle OAuth callback
+  const handleOAuthCallback = async (params: OAuthCallbackParams) => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Exchange code for token and get user
+      const userData = await authClient.handleOAuthCallback(params)
+      setUser(userData)
+      setIsAuthenticated(true)
+
+      // Get stored redirect path or use default
+      const storedRedirectPath = authClient.getStoredRedirectPath()
+      const returnTo = storedRedirectPath || redirectAfterLogin
+
+      router.push(returnTo)
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'OAuth callback failed'
       setError(errorMessage)
       throw err
     } finally {
@@ -300,6 +388,8 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
     isAuthenticated,
     authClient,
     login,
+    loginWithRedirect,
+    handleOAuthCallback,
     logout,
     register,
     verifyEmail,
