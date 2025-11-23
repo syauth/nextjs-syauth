@@ -342,7 +342,10 @@ class SyAuth {
     try {
       const response = await this.apiClient.post<RegisterResponse>(
         '/register/',
-        userData,
+        {
+          ...userData,
+          oauth_client: this.config.oauthClientId,
+        },
         {
           headers: {
             'X-API-Key': this.apiKey,

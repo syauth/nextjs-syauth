@@ -45,8 +45,10 @@ export default function RegisterPage() {
       await register({
         email,
         password,
+        confirm_password: confirmPassword,
         first_name: firstName,
         last_name: lastName,
+        oauth_client: '',
       })
 
       setSuccess(true)
