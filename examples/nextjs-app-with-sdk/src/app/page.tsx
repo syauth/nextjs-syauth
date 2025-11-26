@@ -1,6 +1,7 @@
 'use client'
 
 import { useSyAuth } from '@syauth/nextjs'
+import { syAuthConfig } from '@/lib/syauth-config'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
@@ -42,7 +43,10 @@ export default function HomePage() {
             Sign In
           </button>
           <button
-            onClick={() => router.push('/register')}
+            onClick={() => {
+              const registerUrl = `${syAuthConfig.apiUrl}/auth/register/?client_id=${syAuthConfig.oauthClientId}&redirect_uri=${encodeURIComponent(syAuthConfig.redirectUri)}`
+              window.location.href = registerUrl
+            }}
             className="button button-secondary"
             style={{ fontSize: '1.1rem', padding: '1rem 2rem' }}
           >
@@ -52,7 +56,7 @@ export default function HomePage() {
 
         <div style={{ marginTop: '2rem', fontSize: '0.9rem', color: '#888' }}>
           <p>This app uses SyAuth SDK for authentication</p>
-          <p>Sign in with OAuth or create a new account</p>
+          <p>Both sign in and registration redirect to SyAuth hosted pages</p>
         </div>
       </div>
 

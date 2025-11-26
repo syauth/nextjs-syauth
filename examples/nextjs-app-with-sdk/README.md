@@ -130,12 +130,23 @@ export default withAuth({
 
 ## Authentication Flow
 
+### Sign In Flow (OAuth 2.0)
 1. **User clicks "Sign In"** → Calls `loginWithRedirect()`
-2. **Redirect to SyAuth** → User goes to your deployed login page (e.g., `login.yourdomain.com`)
-3. **User authenticates** → Enters credentials on your branded login page
+2. **Redirect to SyAuth** → User goes to hosted login page (`/e/v1/auth/login/`)
+3. **User authenticates** → Enters credentials on branded login page
 4. **Redirect back** → Returns to `/auth/callback` with authorization code
 5. **Token exchange** → SDK exchanges code for access token using PKCE
 6. **User authenticated** → User object is available via `useSyAuth()` hook
+
+### Registration Flow (Hosted Page)
+1. **User clicks "Create Account"** → Redirects to hosted registration page (`/e/v1/auth/register/`)
+2. **User fills form** → Enters email, name, password on branded registration page
+3. **Account created** → User receives 6-digit verification code via email
+4. **Redirect back** → Returns to `/verify-email` page
+5. **Verify email** → User enters code on `/verify-email` page
+6. **Complete** → User can now sign in
+
+**Note:** Both login and registration use hosted pages on your SyAuth backend, ensuring consistent branding and centralized authentication management.
 
 ---
 
@@ -146,6 +157,7 @@ src/
 ├── app/
 │   ├── auth/
 │   │   └── callback/         # OAuth callback handler
+│   ├── verify-email/         # Email verification page (for entering 6-digit code)
 │   ├── dashboard/            # Protected dashboard page
 │   ├── profile/              # Protected profile page
 │   ├── layout.tsx            # Root layout with SyAuthProvider
@@ -155,6 +167,11 @@ src/
 │   └── syauth-config.ts      # SyAuth SDK configuration
 └── middleware.ts             # Route protection middleware
 ```
+
+**Note:** 
+- **Login**: OAuth 2.0 flow → redirects to SyAuth hosted login page (`/e/v1/auth/login/`)
+- **Registration**: Redirects to SyAuth hosted registration page (`/e/v1/auth/register/`)
+- **Email Verification**: Custom page in your app for entering the 6-digit verification code
 
 ---
 

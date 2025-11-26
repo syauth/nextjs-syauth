@@ -465,6 +465,14 @@ class SyAuth {
       );
     }
 
+    // Check if an OAuth flow is already in progress
+    const { verifier: existingVerifier, state: existingState } = retrievePKCEParams();
+    
+    if (existingVerifier && existingState) {
+      console.warn('[SyAuth] OAuth flow already in progress. Clearing old state and starting fresh.');
+      clearPKCEParams();
+    }
+
     // Generate PKCE parameters
     const { verifier, challenge } = await generatePKCEPair();
     const state = generateState();
@@ -497,9 +505,9 @@ class SyAuth {
     // Validate state parameter (CSRF protection)
     if (!storedState || storedState !== params.state) {
       clearPKCEParams();
-      throw new Error(
-        'Invalid state parameter. Possible CSRF attack or expired session.'
-      );
+      const errorMsg = `Invalid state parameter. Stored: "${storedState}", Received: "${params.state}". Possible CSRF attack or expired session.`;
+      console.error('[SyAuth]', errorMsg);
+      throw new Error(errorMsg);
     }
 
     if (!verifier) {
