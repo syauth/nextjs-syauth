@@ -1,6 +1,6 @@
 {
   "name": "@syauth/nextjs",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "OAuth 2.0 Authentication SDK for Next.js with PKCE support - Part of SyAuth by Nexorix",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -65,5 +65,8 @@
     "@types/react": "^18.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "jose": "^6.1.2"
   }
 }

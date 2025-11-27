@@ -188,10 +188,12 @@ class SyAuth {
         if (!isSkipEndpoint) {
           try {
             const token = await this.getValidToken();
+            console.log('[SyAuth] Request to:', config.url, 'Token:', token ? `${token.substring(0, 20)}...` : 'null');
             if (token) {
               config.headers.Authorization = `Bearer ${token}`;
             }
           } catch (error) {
+            console.error('[SyAuth] Error getting token:', error);
             // If token refresh fails, let the request proceed without token
             // The 401 response will trigger logout
           }
@@ -295,9 +297,12 @@ class SyAuth {
     }
   }
 
-  async getProfile(): Promise<AuthUser | null> {
+  async getProfile(token?: string): Promise<AuthUser | null> {
     try {
-      const response = await this.apiClient.get<AuthUser>('/user/profile/');
+      const config = token ? {
+        headers: { Authorization: `Bearer ${token}` }
+      } : {};
+      const response = await this.apiClient.get<AuthUser>('/user/profile/', config);
       this.setUser(response.data);
       return response.data;
     } catch (error) {
@@ -477,11 +482,19 @@ class SyAuth {
     const { verifier, challenge } = await generatePKCEPair();
     const state = generateState();
 
+    console.log('[SyAuth] Generated new state:', state);
+
     // Store PKCE parameters in session storage
     storePKCEParams(verifier, state, redirectTo);
+    
+    console.log('[SyAuth] Stored PKCE params. Verifying storage...');
+    const { state: storedState } = retrievePKCEParams();
+    console.log('[SyAuth] Verification - stored state:', storedState);
 
     // Build authorization URL
     const authUrl = this.buildAuthorizationUrl(challenge, state);
+
+    console.log('[SyAuth] Redirecting to:', authUrl);
 
     // Redirect to authorization endpoint
     window.location.href = authUrl;
@@ -499,8 +512,36 @@ class SyAuth {
       throw new Error('handleOAuthCallback can only be called in the browser');
     }
 
-    // Retrieve stored PKCE parameters
-    const { verifier, state: storedState } = retrievePKCEParams();
+    // Retrieve stored PKCE parameters from client-side storage
+    let { verifier, state: storedState, redirectTo } = retrievePKCEParams();
+
+    // If client-side state is missing, try server-side validation
+    if (!storedState || !verifier) {
+      
+      try {
+        const response = await fetch('/api/auth/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state: params.state, code: params.code }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.valid) {
+            verifier = data.codeVerifier;
+            storedState = params.state; // Use the received state since server validated it
+            redirectTo = data.redirectTo;
+          } else {
+            throw new Error(data.error || 'Server-side validation failed');
+          }
+        } else {
+          throw new Error('Server-side validation request failed');
+        }
+      } catch (error) {
+        console.error('[SyAuth] Server-side validation failed:', error);
+        // Fall through to client-side validation error
+      }
+    }
 
     // Validate state parameter (CSRF protection)
     if (!storedState || storedState !== params.state) {
@@ -535,7 +576,8 @@ class SyAuth {
       }
 
       // Get user profile using the access token
-      const user = await this.getProfile();
+      // Pass the token directly to avoid race condition with localStorage
+      const user = await this.getProfile(tokenResponse.access_token);
 
       if (!user) {
         throw new Error('Failed to retrieve user profile');

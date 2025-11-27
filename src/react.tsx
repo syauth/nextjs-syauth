@@ -97,10 +97,13 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
         }
 
         // Then try to fetch the latest profile (will auto-refresh token if needed)
-        const userData = await authClient.getProfile()
-        if (userData && !cancelled) {
-          setUser(userData)
-          setIsAuthenticated(true)
+        // Only fetch if we have a token to avoid 401 errors on initial load (e.g. during OAuth callback)
+        if (authClient.getToken()) {
+          const userData = await authClient.getProfile()
+          if (userData && !cancelled) {
+            setUser(userData)
+            setIsAuthenticated(true)
+          }
         } else if (!storedUser && !cancelled) {
           setUser(null)
           setIsAuthenticated(false)

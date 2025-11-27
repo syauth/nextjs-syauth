@@ -93,7 +93,43 @@ export const PKCE_STORAGE_KEYS = {
 } as const;
 
 /**
- * Store PKCE parameters in sessionStorage
+ * Set a cookie
+ */
+function setCookie(name: string, value: string, maxAgeSeconds: number = 600): void {
+  if (typeof document === 'undefined') return;
+  
+  // Use SameSite=Lax to allow cookies to be sent on OAuth redirects
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax; Secure`;
+}
+
+/**
+ * Get a cookie value
+ */
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [cookieName, cookieValue] = cookie.trim().split('=');
+    if (cookieName === name) {
+      return decodeURIComponent(cookieValue);
+    }
+  }
+  return null;
+}
+
+/**
+ * Delete a cookie
+ */
+function deleteCookie(name: string): void {
+  if (typeof document === 'undefined') return;
+  
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax; Secure`;
+}
+
+/**
+ * Store PKCE parameters in cookies (more reliable than sessionStorage for OAuth flows)
+ * Also stores in URL hash as a fallback for private browsing mode
  *
  * @param verifier - Code verifier to store
  * @param state - State parameter to store
@@ -106,16 +142,26 @@ export function storePKCEParams(
 ): void {
   if (typeof window === 'undefined') return;
 
-  sessionStorage.setItem(PKCE_STORAGE_KEYS.CODE_VERIFIER, verifier);
-  sessionStorage.setItem(PKCE_STORAGE_KEYS.STATE, state);
+  // Store in cookies with 10 minute expiry
+  setCookie(PKCE_STORAGE_KEYS.CODE_VERIFIER, verifier, 600);
+  setCookie(PKCE_STORAGE_KEYS.STATE, state, 600);
 
   if (redirectTo) {
-    sessionStorage.setItem(PKCE_STORAGE_KEYS.REDIRECT_TO, redirectTo);
+    setCookie(PKCE_STORAGE_KEYS.REDIRECT_TO, redirectTo, 600);
   }
+  
+  // FALLBACK: Also store in URL hash for private browsing mode where cookies may be blocked
+  // This survives page reloads and Fast Refresh
+  const hashData = {
+    v: verifier,
+    s: state,
+    r: redirectTo,
+  };
+  window.location.hash = `pkce=${encodeURIComponent(btoa(JSON.stringify(hashData)))}`;
 }
 
 /**
- * Retrieve PKCE parameters from sessionStorage
+ * Retrieve PKCE parameters from cookies or URL hash fallback
  *
  * @returns Object containing stored PKCE parameters
  */
@@ -128,21 +174,48 @@ export function retrievePKCEParams(): {
     return { verifier: null, state: null, redirectTo: null };
   }
 
+  // Try cookies first
+  let verifier = getCookie(PKCE_STORAGE_KEYS.CODE_VERIFIER);
+  let state = getCookie(PKCE_STORAGE_KEYS.STATE);
+  let redirectTo = getCookie(PKCE_STORAGE_KEYS.REDIRECT_TO);
+  
+  // FALLBACK: If cookies are null, try URL hash
+  if (!state && window.location.hash) {
+    try {
+      const hashMatch = window.location.hash.match(/pkce=([^&]+)/);
+      if (hashMatch) {
+        const hashData = JSON.parse(atob(decodeURIComponent(hashMatch[1])));
+        verifier = hashData.v;
+        state = hashData.s;
+        redirectTo = hashData.r;
+      }
+    } catch (e) {
+      // Ignore parsing errors
+    }
+  }
+
   return {
-    verifier: sessionStorage.getItem(PKCE_STORAGE_KEYS.CODE_VERIFIER),
-    state: sessionStorage.getItem(PKCE_STORAGE_KEYS.STATE),
-    redirectTo: sessionStorage.getItem(PKCE_STORAGE_KEYS.REDIRECT_TO),
+    verifier,
+    state,
+    redirectTo,
   };
 }
 
 /**
- * Clear PKCE parameters from sessionStorage
+ * Clear PKCE parameters from cookies and URL hash
  * Should be called after successful token exchange or on error
  */
 export function clearPKCEParams(): void {
   if (typeof window === 'undefined') return;
 
-  sessionStorage.removeItem(PKCE_STORAGE_KEYS.CODE_VERIFIER);
-  sessionStorage.removeItem(PKCE_STORAGE_KEYS.STATE);
-  sessionStorage.removeItem(PKCE_STORAGE_KEYS.REDIRECT_TO);
+  deleteCookie(PKCE_STORAGE_KEYS.CODE_VERIFIER);
+  deleteCookie(PKCE_STORAGE_KEYS.STATE);
+  deleteCookie(PKCE_STORAGE_KEYS.REDIRECT_TO);
+  
+  // Clear URL hash
+  if (window.location.hash.includes('pkce=')) {
+    window.location.hash = '';
+  }
 }
+
+

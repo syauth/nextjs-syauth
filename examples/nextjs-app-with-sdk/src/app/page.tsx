@@ -36,7 +36,7 @@ export default function HomePage() {
 
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
           <button
-            onClick={() => loginWithRedirect()}
+            onClick={() => window.location.href = '/api/auth/login'}
             className="button button-primary"
             style={{ fontSize: '1.1rem', padding: '1rem 2rem' }}
           >
