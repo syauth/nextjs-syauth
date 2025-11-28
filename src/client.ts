@@ -188,12 +188,10 @@ class SyAuth {
         if (!isSkipEndpoint) {
           try {
             const token = await this.getValidToken();
-            console.log('[SyAuth] Request to:', config.url, 'Token:', token ? `${token.substring(0, 20)}...` : 'null');
             if (token) {
               config.headers.Authorization = `Bearer ${token}`;
             }
           } catch (error) {
-            console.error('[SyAuth] Error getting token:', error);
             // If token refresh fails, let the request proceed without token
             // The 401 response will trigger logout
           }
@@ -247,10 +245,6 @@ class SyAuth {
     password: string,
     remember_me: boolean = false
   ): Promise<AuthUser> {
-    console.warn(
-      '[SyAuth] Warning: login() uses password grant which is deprecated in OAuth 2.1. ' +
-      'Consider using loginWithRedirect() for better security.'
-    );
 
     try {
       const response = await this.apiClient.post<AuthResponse>('/login/', {
@@ -288,7 +282,7 @@ class SyAuth {
     try {
       await this.apiClient.post('/logout/');
     } catch (error) {
-      console.error('Logout API error:', error);
+      // Ignore logout errors
     } finally {
       this.clearAuth();
       if (this.config.onLogout) {
@@ -474,7 +468,6 @@ class SyAuth {
     const { verifier: existingVerifier, state: existingState } = retrievePKCEParams();
     
     if (existingVerifier && existingState) {
-      console.warn('[SyAuth] OAuth flow already in progress. Clearing old state and starting fresh.');
       clearPKCEParams();
     }
 
@@ -482,19 +475,15 @@ class SyAuth {
     const { verifier, challenge } = await generatePKCEPair();
     const state = generateState();
 
-    console.log('[SyAuth] Generated new state:', state);
-
+    // Store PKCE parameters in session storage
     // Store PKCE parameters in session storage
     storePKCEParams(verifier, state, redirectTo);
     
-    console.log('[SyAuth] Stored PKCE params. Verifying storage...');
     const { state: storedState } = retrievePKCEParams();
-    console.log('[SyAuth] Verification - stored state:', storedState);
 
     // Build authorization URL
+    // Build authorization URL
     const authUrl = this.buildAuthorizationUrl(challenge, state);
-
-    console.log('[SyAuth] Redirecting to:', authUrl);
 
     // Redirect to authorization endpoint
     window.location.href = authUrl;
@@ -538,7 +527,6 @@ class SyAuth {
           throw new Error('Server-side validation request failed');
         }
       } catch (error) {
-        console.error('[SyAuth] Server-side validation failed:', error);
         // Fall through to client-side validation error
       }
     }
@@ -547,7 +535,6 @@ class SyAuth {
     if (!storedState || storedState !== params.state) {
       clearPKCEParams();
       const errorMsg = `Invalid state parameter. Stored: "${storedState}", Received: "${params.state}". Possible CSRF attack or expired session.`;
-      console.error('[SyAuth]', errorMsg);
       throw new Error(errorMsg);
     }
 
