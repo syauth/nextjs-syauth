@@ -81,11 +81,13 @@ export default function RegisterForm({
 
       setSuccess(true)
 
-      // Wait 2 seconds then redirect to login
+      // Wait 2 seconds then redirect to email verification
       setTimeout(() => {
-        window.location.href = `/?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+        window.location.href = `/verify-email?email=${encodeURIComponent(
+          email
+        )}&client_id=${clientId}&redirect_uri=${encodeURIComponent(
           redirectUri
-        )}${state ? `&state=${state}` : ''}&registered=true`
+        )}${state ? `&state=${state}` : ''}`
       }, 2000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed')
@@ -99,7 +101,7 @@ export default function RegisterForm({
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      provider: provider.provider_name,
+      provider: provider.provider_type,
     })
 
     if (state) {
@@ -130,7 +132,7 @@ export default function RegisterForm({
         {/* Success Message */}
         {success && (
           <div className={styles.success}>
-            Account created successfully! Redirecting to login...
+            Account created! Check your email for verification code...
           </div>
         )}
 
@@ -197,7 +199,7 @@ export default function RegisterForm({
             <label htmlFor="password" className={styles.label}>
               Password
             </label>
-            <div className={styles.passwordContainer}>
+            <div className={styles.passwordWrapper}>
               <input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
@@ -211,7 +213,7 @@ export default function RegisterForm({
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className={styles.passwordToggle}
+                className={styles.togglePassword}
                 disabled={loading || success}
               >
                 {showPassword ? '👁️' : '👁️‍🗨️'}
@@ -238,7 +240,7 @@ export default function RegisterForm({
           <button
             type="submit"
             disabled={loading || success}
-            className={styles.submitButton}
+            className={styles.submitBtn}
             style={{
               backgroundColor: branding.primary_color,
             }}
@@ -257,19 +259,19 @@ export default function RegisterForm({
             <div className={styles.socialButtons}>
               {externalProviders.map((provider) => (
                 <button
-                  key={provider.provider_name}
+                  key={provider.provider_type}
                   onClick={() => handleSocialLogin(provider)}
                   disabled={loading || success}
                   className={styles.socialButton}
-                  title={`Sign up with ${provider.provider_name}`}
+                  title={`Sign up with ${provider.provider_type}`}
                 >
-                  {provider.provider_name === 'google' && '🔵'}
-                  {provider.provider_name === 'github' && '⚫'}
-                  {provider.provider_name === 'linkedin' && '🔷'}
-                  {provider.provider_name === 'facebook' && '🔵'}
-                  {!['google', 'github', 'linkedin', 'facebook'].includes(provider.provider_name) &&
+                  {provider.provider_type === 'google' && '🔵'}
+                  {provider.provider_type === 'github' && '⚫'}
+                  {provider.provider_type === 'linkedin' && '🔷'}
+                  {provider.provider_type === 'facebook' && '🔵'}
+                  {!['google', 'github', 'linkedin', 'facebook'].includes(provider.provider_type) &&
                     '🔐'}
-                  <span>{provider.provider_name}</span>
+                  <span>{provider.provider_type}</span>
                 </button>
               ))}
             </div>

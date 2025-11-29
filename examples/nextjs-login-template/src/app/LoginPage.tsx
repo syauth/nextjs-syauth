@@ -36,11 +36,9 @@ export default function LoginPage() {
           setBranding(fallbackBranding)
         }
 
-        // TODO: Fetch external providers from API
-        // For now, using empty array
         setExternalProviders([])
       } catch (err) {
-        console.error('Error loading branding:', err)
+
         // Fallback to env-only branding
         const envBranding = getBrandingFromEnv()
         const fallbackBranding = mergeBranding(null, envBranding)

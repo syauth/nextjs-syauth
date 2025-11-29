@@ -13,13 +13,13 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
 
   // Get OAuth parameters from URL
-  const clientId = searchParams.get('client_id') || ''
-  const redirectUri = searchParams.get('redirect_uri') || ''
+  const clientId = searchParams.get('client_id') || process.env.NEXT_PUBLIC_OAUTH_CLIENT_ID || ''
+  const redirectUri = searchParams.get('redirect_uri') || process.env.NEXT_PUBLIC_LOGIN_URL || ''
   const state = searchParams.get('state') || undefined
 
   useEffect(() => {
-    if (!clientId || !redirectUri) {
-      setError('Missing required OAuth parameters')
+    if (!clientId) {
+      setError('Missing required OAuth client_id parameter')
       setLoading(false)
       return
     }
@@ -32,10 +32,10 @@ export default function RegisterPage() {
           throw new Error('Failed to load branding')
         }
         const data = await response.json()
-        setBranding(data.branding)
-        setExternalProviders(data.external_providers || [])
+        setBranding(data)
+        setExternalProviders([])
       } catch (err) {
-        console.error('Failed to fetch branding:', err)
+
         setError('Failed to load configuration')
       } finally {
         setLoading(false)

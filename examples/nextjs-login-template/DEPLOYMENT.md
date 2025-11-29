@@ -15,7 +15,7 @@ Simple guide for deploying your white-label login page.
    git init
    git add .
    git commit -m "Initial commit"
-   git remote add origin https://github.com/yourusername/login-page.git
+   git remote add origin https://github.com/syauth/nextjs-syauth.git
    git push -u origin main
    ```
 

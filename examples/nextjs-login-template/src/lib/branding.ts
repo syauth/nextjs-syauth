@@ -1,4 +1,6 @@
 import { BrandingConfig, DEFAULT_BRANDING } from './types'
+import axios from 'axios'
+import https from 'https'
 
 /**
  * Get branding configuration from environment variables or API
@@ -40,28 +42,8 @@ export function mergeBranding(
 export async function fetchBrandingFromAPI(
   clientId: string
 ): Promise<Partial<BrandingConfig> | null> {
-  try {
-    const apiUrl = process.env.NEXT_PUBLIC_S0011_API_URL
-    if (!apiUrl || !clientId) {
-      return null
-    }
-
-    const response = await fetch(`${apiUrl}/developer/clients/${clientId}/branding/`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store', // Always fetch fresh branding
-    })
-
-    if (!response.ok) {
-      return null
-    }
-
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error('Error fetching branding from API:', error)
-    return null
-  }
+  // For public login pages, we don't fetch branding from the API
+  // because the endpoint requires authentication.
+  // Instead, configure branding via environment variables in .env.local
+  return null
 }

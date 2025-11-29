@@ -46,21 +46,46 @@ export default function LoginForm({
         }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const data = await response.json()
         throw new Error(data.error || 'Login failed')
       }
 
-      // Redirect to OAuth authorize endpoint
-      const authorizeUrl = new URL(`${apiUrl}/oauth/authorize/`)
-      authorizeUrl.searchParams.set('client_id', clientId)
-      authorizeUrl.searchParams.set('response_type', 'code')
-      authorizeUrl.searchParams.set('redirect_uri', redirectUri)
-      if (state) {
-        authorizeUrl.searchParams.set('state', state)
+      // Store the JWT token
+      if (data.token) {
+        localStorage.setItem('auth_token', data.token)
+        if (data.refresh_token) {
+          localStorage.setItem('refresh_token', data.refresh_token)
+        }
       }
 
-      window.location.href = authorizeUrl.toString()
+      // Wait a moment for storage to complete
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Verify we're authenticated before redirecting
+      try {
+        const profileCheck = await fetch(`${apiUrl}/user/profile/`, {
+          headers: {
+            'Authorization': `Bearer ${data.token}`,
+          },
+        })
+        
+        if (!profileCheck.ok) {
+          throw new Error(`Session not established (${profileCheck.status}). Please try logging in again.`)
+        }
+      } catch (err) {
+        throw new Error('Failed to establish session. Please try again.')
+      }
+
+      // After successful login, redirect to the final destination
+      // The redirectUri is where the user wanted to go (e.g., the app)
+      if (redirectUri) {
+        window.location.href = redirectUri
+      } else {
+        // If no redirect URI, go to profile page
+        window.location.href = '/profile'
+      }
     } catch (err: any) {
       setError(err.message || 'An error occurred during login')
       setLoading(false)
