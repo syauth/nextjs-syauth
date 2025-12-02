@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --experimental-https --turbopack",
+    "dev:ngrok": "bash scripts/start-with-ngrok-cli.sh",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -13,7 +14,7 @@
     "next": "15.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@syauth/nextjs": "file:../../"
+    "@syauth/nextjs": "0.4.1"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

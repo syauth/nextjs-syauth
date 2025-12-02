@@ -1,45 +1,11 @@
 import SyAuth from './client'
 import { SyAuthProvider, useSyAuth } from './react'
+import { withAuth } from './middleware'
 import { useOAuthCallback } from './hooks/useOAuthCallback'
 
-/**
- * Core SyAuth client instance for client-side usage
- * @example
- * ```tsx
- * const authClient = new SyAuth(config)
- * ```
- */
-export { SyAuth }
+export { SyAuth, SyAuthProvider, useSyAuth, withAuth, useOAuthCallback }
 
-/**
- * React provider component that wraps your app and provides authentication context
- * @example
- * ```tsx
- * <SyAuthProvider config={config}>
- *   <App />
- * </SyAuthProvider>
- * ```
- */
-export { SyAuthProvider }
-
-/**
- * React hook to access authentication state and methods
- * @example
- * ```tsx
- * const { user, isAuthenticated, loginWithRedirect } = useSyAuth()
- * ```
- */
-export { useSyAuth }
-
-/**
- * React hook to handle OAuth callback flow
- * @example
- * ```tsx
- * const { loading, error, success } = useOAuthCallback()
- * ```
- */
-export { useOAuthCallback }
-
+// export types
 export type {
   AuthUser,
   AuthResponse,
@@ -53,4 +19,5 @@ export type {
   OAuthCallbackParams,
 } from './client'
 
+export type { MiddlewareOptions } from './middleware'
 export type { UseOAuthCallbackResult } from './hooks/useOAuthCallback'

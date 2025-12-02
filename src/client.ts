@@ -246,6 +246,7 @@ class SyAuth {
     remember_me: boolean = false
   ): Promise<AuthUser> {
 
+
     try {
       const response = await this.apiClient.post<AuthResponse>('/login/', {
         email,
@@ -282,7 +283,7 @@ class SyAuth {
     try {
       await this.apiClient.post('/logout/');
     } catch (error) {
-      // Ignore logout errors
+      console.error('Logout API error:', error);
     } finally {
       this.clearAuth();
       if (this.config.onLogout) {
@@ -291,12 +292,9 @@ class SyAuth {
     }
   }
 
-  async getProfile(token?: string): Promise<AuthUser | null> {
+  async getProfile(): Promise<AuthUser | null> {
     try {
-      const config = token ? {
-        headers: { Authorization: `Bearer ${token}` }
-      } : {};
-      const response = await this.apiClient.get<AuthUser>('/user/profile/', config);
+      const response = await this.apiClient.get<AuthUser>('/user/profile/');
       this.setUser(response.data);
       return response.data;
     } catch (error) {
@@ -341,10 +339,7 @@ class SyAuth {
     try {
       const response = await this.apiClient.post<RegisterResponse>(
         '/register/',
-        {
-          ...userData,
-          oauth_client: this.config.oauthClientId,
-        },
+        userData,
         {
           headers: {
             'X-API-Key': this.apiKey,
@@ -464,24 +459,13 @@ class SyAuth {
       );
     }
 
-    // Check if an OAuth flow is already in progress
-    const { verifier: existingVerifier, state: existingState } = retrievePKCEParams();
-    
-    if (existingVerifier && existingState) {
-      clearPKCEParams();
-    }
-
     // Generate PKCE parameters
     const { verifier, challenge } = await generatePKCEPair();
     const state = generateState();
 
     // Store PKCE parameters in session storage
-    // Store PKCE parameters in session storage
     storePKCEParams(verifier, state, redirectTo);
-    
-    const { state: storedState } = retrievePKCEParams();
 
-    // Build authorization URL
     // Build authorization URL
     const authUrl = this.buildAuthorizationUrl(challenge, state);
 
@@ -501,41 +485,15 @@ class SyAuth {
       throw new Error('handleOAuthCallback can only be called in the browser');
     }
 
-    // Retrieve stored PKCE parameters from client-side storage
-    let { verifier, state: storedState, redirectTo } = retrievePKCEParams();
-
-    // If client-side state is missing, try server-side validation
-    if (!storedState || !verifier) {
-      
-      try {
-        const response = await fetch('/api/auth/validate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ state: params.state, code: params.code }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.valid) {
-            verifier = data.codeVerifier;
-            storedState = params.state; // Use the received state since server validated it
-            redirectTo = data.redirectTo;
-          } else {
-            throw new Error(data.error || 'Server-side validation failed');
-          }
-        } else {
-          throw new Error('Server-side validation request failed');
-        }
-      } catch (error) {
-        // Fall through to client-side validation error
-      }
-    }
+    // Retrieve stored PKCE parameters
+    const { verifier, state: storedState } = retrievePKCEParams();
 
     // Validate state parameter (CSRF protection)
     if (!storedState || storedState !== params.state) {
       clearPKCEParams();
-      const errorMsg = `Invalid state parameter. Stored: "${storedState}", Received: "${params.state}". Possible CSRF attack or expired session.`;
-      throw new Error(errorMsg);
+      throw new Error(
+        'Invalid state parameter. Possible CSRF attack or expired session.'
+      );
     }
 
     if (!verifier) {
@@ -563,8 +521,7 @@ class SyAuth {
       }
 
       // Get user profile using the access token
-      // Pass the token directly to avoid race condition with localStorage
-      const user = await this.getProfile(tokenResponse.access_token);
+      const user = await this.getProfile();
 
       if (!user) {
         throw new Error('Failed to retrieve user profile');
