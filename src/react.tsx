@@ -9,6 +9,7 @@ import SyAuth, {
   VerificationResponse,
   PasswordResetResponse,
   ProfileUpdateData,
+  PasswordUpdateData,
   OAuthCallbackParams,
 } from './client'
 
@@ -47,6 +48,7 @@ interface AuthContextType {
   logout: () => Promise<void>
   register: (userData: RegisterData) => Promise<void>
   updateProfile: (data: ProfileUpdateData) => Promise<AuthUser>
+  updatePassword: (data: PasswordUpdateData) => Promise<{ message: string }>
   verifyEmail: (email: string, code: string) => Promise<VerificationResponse>
   requestVerificationCode: (email: string) => Promise<VerificationResponse>
   requestPasswordReset: (email: string) => Promise<PasswordResetResponse>
@@ -354,6 +356,24 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
       setLoading(false)
     }
   }
+
+  // Update password
+  const updatePassword = async (data: PasswordUpdateData) => {
+    try {
+      setLoading(true)
+      setError(null)
+      const result = await authClient.updatePassword(data)
+      return result
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Password update failed'
+      setError(errorMessage)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Hook for handling unauthorized access - redirect if not authenticated
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -400,6 +420,7 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
     requestPasswordReset,
     confirmPasswordReset,
     updateProfile,
+    updatePassword,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

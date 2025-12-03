@@ -24,12 +24,16 @@ export interface ProfileUpdateData {
   first_name?: string;
   last_name?: string;
   email?: string;
-  password?: string;
-  current_password?: string;
   company?: string;
   job_title?: string;
   phone_number?: string;
   country?: string;
+}
+
+export interface PasswordUpdateData {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
 }
 
 export interface AuthResponse {
@@ -320,6 +324,23 @@ class SyAuth {
           ...response.data,
         });
       }
+
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMessage = formatDjangoError(error);
+        throw new Error(errorMessage);
+      }
+      throw error;
+    }
+  }
+
+  async updatePassword(data: PasswordUpdateData): Promise<{ message: string }> {
+    try {
+      const response = await this.apiClient.post<{ message: string }>(
+        '/user/password/update/',
+        data
+      );
 
       return response.data;
     } catch (error) {

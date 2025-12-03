@@ -11,6 +11,7 @@ export type {
   AuthResponse,
   SyAuthConfig,
   ProfileUpdateData,
+  PasswordUpdateData,
   RegisterData,
   PasswordResetConfirmData,
   VerificationResponse,
