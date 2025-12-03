@@ -135,15 +135,16 @@ export default function ProfileForm() {
     try {
       const token = localStorage.getItem('auth_token')
       
-      const response = await fetch(`${apiUrl}/user/profile/`, {
-        method: 'PATCH',
+      const response = await fetch(`${apiUrl}/user/password/update/`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           current_password: currentPassword,
-          password: newPassword,
+          new_password: newPassword,
+          confirm_password: confirmPassword,
         }),
       })
 
