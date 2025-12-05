@@ -91,6 +91,10 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
           setLoading(true)
         }
 
+        // Check if we have auth_status cookie (set by server-side OAuth flow)
+        const hasAuthStatusCookie = typeof document !== 'undefined' && 
+          document.cookie.includes('auth_status=')
+        
         // First check if we already have a user in storage
         const storedUser = authClient.getUser()
         if (storedUser && !cancelled) {
@@ -99,12 +103,23 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
         }
 
         // Then try to fetch the latest profile (will auto-refresh token if needed)
-        // Only fetch if we have a token to avoid 401 errors on initial load (e.g. during OAuth callback)
-        if (authClient.getToken()) {
-          const userData = await authClient.getProfile()
-          if (userData && !cancelled) {
-            setUser(userData)
-            setIsAuthenticated(true)
+        // Only fetch if we have a token OR auth_status cookie (server-side flow)
+        if (authClient.getToken() || hasAuthStatusCookie) {
+          try {
+            const userData = await authClient.getProfile()
+            if (userData && !cancelled) {
+              setUser(userData)
+              setIsAuthenticated(true)
+            }
+          } catch (profileError) {
+            // Profile fetch failed but we have auth_status cookie
+            // This means server-side auth succeeded but we can't get profile
+            // Still mark as authenticated to prevent redirect loop
+            if (hasAuthStatusCookie && !cancelled) {
+              setIsAuthenticated(true)
+            } else {
+              throw profileError
+            }
           }
         } else if (!storedUser && !cancelled) {
           setUser(null)
@@ -376,29 +391,36 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
 
   // Hook for handling unauthorized access - redirect if not authenticated
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      // Only redirect on client-side and only from protected pages
-      if (typeof window !== 'undefined') {
-        const pathname = window.location.pathname
+    // Check for auth_status cookie (set by server-side OAuth flow)
+    const hasAuthStatusCookie = typeof document !== 'undefined' && 
+      document.cookie.includes('auth_status=')
+    
+    // Don't redirect if we have auth cookie OR if authenticated OR still loading
+    if (loading || isAuthenticated || hasAuthStatusCookie) {
+      return
+    }
+    
+    // Only redirect on client-side and only from protected pages
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname
 
-        // Check if the current path is in a protected route pattern
-        const isProtectedPath = [
-          '/dashboard',
-          '/profile',
-          '/settings',
-          '/account',
-        ].some(
-          (protectedPath) =>
-            pathname === protectedPath ||
-            pathname.startsWith(`${protectedPath}/`)
+      // Check if the current path is in a protected route pattern
+      const isProtectedPath = [
+        '/dashboard',
+        '/profile',
+        '/settings',
+        '/account',
+      ].some(
+        (protectedPath) =>
+          pathname === protectedPath ||
+          pathname.startsWith(`${protectedPath}/`)
+      )
+
+      if (isProtectedPath) {
+        const returnPath = encodeURIComponent(
+          pathname + window.location.search
         )
-
-        if (isProtectedPath) {
-          const returnPath = encodeURIComponent(
-            pathname + window.location.search
-          )
-          router.push(`${unauthorizedRedirect}?return_to=${returnPath}`)
-        }
+        router.push(`${unauthorizedRedirect}?return_to=${returnPath}`)
       }
     }
   }, [loading, isAuthenticated, router, unauthorizedRedirect])

@@ -8,7 +8,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const authClient = useMemo(() => new SyAuth(syAuthConfig), [])
   
   return (
-    <SyAuthProvider authClient={authClient} redirectAfterLogin="/dashboard">
+    <SyAuthProvider 
+      authClient={authClient} 
+      redirectAfterLogin="/dashboard"
+      unauthorizedRedirect="/"
+    >
       {children}
     </SyAuthProvider>
   )

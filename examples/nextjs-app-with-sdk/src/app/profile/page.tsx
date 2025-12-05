@@ -5,18 +5,29 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, FormEvent } from 'react'
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, loading, updateProfile, logout } = useSyAuth()
+  const { user, isAuthenticated, loading, updateProfile, updatePassword, logout } = useSyAuth()
   const router = useRouter()
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  // Password change state
+  const [showPasswordChange, setShowPasswordChange] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push('/')
+      // Check for auth_status cookie before redirecting
+      const hasAuthStatusCookie = document.cookie.includes('auth_status=')
+      if (!hasAuthStatusCookie) {
+        router.push('/')
+      }
     }
   }, [isAuthenticated, loading, router])
 
@@ -43,19 +54,55 @@ export default function ProfilePage() {
     e.preventDefault()
     setUpdating(true)
     setError(null)
-    setSuccess(false)
+    setSuccess(null)
 
     try {
       await updateProfile({
         first_name: firstName,
         last_name: lastName,
       })
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      setSuccess('Profile updated successfully!')
+      setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update profile')
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const handlePasswordChange = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setSuccess(null)
+
+    if (newPassword !== confirmPassword) {
+      setError('New passwords do not match')
+      return
+    }
+
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters')
+      return
+    }
+
+    setChangingPassword(true)
+
+    try {
+      await updatePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      })
+      setSuccess('Password changed successfully!')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setShowPasswordChange(false)
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to change password')
+    } finally {
+      setChangingPassword(false)
     }
   }
 
@@ -85,7 +132,7 @@ export default function ProfilePage() {
 
         {success && (
           <div className="success">
-            Profile updated successfully!
+            {success}
           </div>
         )}
 
@@ -95,7 +142,9 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* Profile Information */}
         <div className="card">
+          <h2 style={{ marginBottom: '1rem', fontSize: '1.125rem' }}>Profile Information</h2>
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
@@ -176,7 +225,111 @@ export default function ProfilePage() {
             </div>
           </form>
         </div>
+
+        {/* Password Change Section */}
+        <div className="card">
+          <h2 style={{ marginBottom: '1rem', fontSize: '1.125rem' }}>Security</h2>
+          
+          {!showPasswordChange ? (
+            <button
+              onClick={() => setShowPasswordChange(true)}
+              className="button button-secondary"
+              style={{ width: '100%' }}
+            >
+              Change Password
+            </button>
+          ) : (
+            <form onSubmit={handlePasswordChange}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                  disabled={changingPassword}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '6px',
+                    fontSize: '1rem',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  disabled={changingPassword}
+                  placeholder="At least 8 characters"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '6px',
+                    fontSize: '1rem',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={changingPassword}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '6px',
+                    fontSize: '1rem',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button
+                  type="submit"
+                  disabled={changingPassword}
+                  className="button button-primary"
+                  style={{ flex: 1 }}
+                >
+                  {changingPassword ? 'Changing...' : 'Change Password'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordChange(false)
+                    setCurrentPassword('')
+                    setNewPassword('')
+                    setConfirmPassword('')
+                    setError(null)
+                  }}
+                  className="button button-secondary"
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   )
 }
+

@@ -1,62 +1,62 @@
 'use client'
 
-import { useOAuthCallback } from '@syauth/nextjs'
+import { useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 /**
- * Handles OAuth callback using the SDK's useOAuthCallback hook
- * This hook automatically:
- * 1. Parses the authorization code from URL
- * 2. Exchanges it for an access token
- * 3. Retrieves user profile
- * 4. Redirects to the original destination
+ * Handles OAuth callback by redirecting to the server-side API route
+ * 
+ * IMPORTANT: Since we use server-side login (/api/auth/login),
+ * we must also use server-side callback (/api/auth/callback)
+ * because they share the same session storage (syauth_oauth_session cookie)
+ * 
+ * Uses window.location.href for redirect to avoid React double-render issues
  */
 export default function CallbackHandler() {
-  const { loading, error, success } = useOAuthCallback()
+  const searchParams = useSearchParams()
+  const redirectedRef = useRef(false)
 
-  if (loading) {
-    return (
-      <div className="container">
-        <div className="card" style={{ textAlign: 'center', marginTop: '4rem' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔄</div>
-          <h2>Completing sign in...</h2>
-          <p style={{ color: '#666', marginTop: '0.5rem' }}>
-            Please wait while we authenticate you.
-          </p>
-        </div>
+  useEffect(() => {
+    // Prevent double redirect (React Strict Mode, Fast Refresh)
+    if (redirectedRef.current) {
+      return
+    }
+
+    const code = searchParams.get('code')
+    const state = searchParams.get('state')
+    const errorParam = searchParams.get('error')
+    const errorDescription = searchParams.get('error_description')
+
+    // Handle error from authorization server
+    if (errorParam) {
+      redirectedRef.current = true
+      window.location.href = `/auth/error?error=${encodeURIComponent(errorDescription || errorParam)}`
+      return
+    }
+
+    if (!code || !state) {
+      redirectedRef.current = true
+      window.location.href = '/auth/error?error=Missing%20code%20or%20state%20parameter'
+      return
+    }
+
+    // Mark as redirected BEFORE navigating to prevent double calls
+    redirectedRef.current = true
+
+    // Use window.location.href for a full page navigation to the API route
+    // This prevents React double-render issues and ensures a clean request
+    window.location.href = `/api/auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`
+  }, [searchParams])
+
+  return (
+    <div className="container">
+      <div className="card" style={{ textAlign: 'center', marginTop: '4rem' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔄</div>
+        <h2>Completing sign in...</h2>
+        <p style={{ color: '#666', marginTop: '0.5rem' }}>
+          Please wait while we authenticate you.
+        </p>
       </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="container">
-        <div className="card" style={{ textAlign: 'center', marginTop: '4rem' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
-          <h2>Authentication Failed</h2>
-          <div className="error" style={{ marginTop: '1rem', textAlign: 'left' }}>
-            {error}
-          </div>
-          <a href="/" className="button button-primary" style={{ marginTop: '1rem', display: 'inline-block' }}>
-            Return Home
-          </a>
-        </div>
-      </div>
-    )
-  }
-
-  if (success) {
-    return (
-      <div className="container">
-        <div className="card" style={{ textAlign: 'center', marginTop: '4rem' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>✅</div>
-          <h2>Success!</h2>
-          <p style={{ color: '#666', marginTop: '0.5rem' }}>
-            Redirecting you now...
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  return null
+    </div>
+  )
 }

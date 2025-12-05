@@ -63,8 +63,8 @@ Configure custom domain: `login.yourdomain.com`
 ### Required
 
 ```bash
-NEXT_PUBLIC_S0011_API_URL=https://api.yourdomain.com/e/v1
-NEXT_PUBLIC_OAUTH_CLIENT_ID=your-oauth-client-id
+NEXT_PUBLIC_SYAUTH_API_URL=https://api.yourdomain.com/e/v1
+NEXT_PUBLIC_SYAUTH_CLIENT_ID=your-oauth-client-id
 NEXT_PUBLIC_LOGIN_URL=https://login.yourdomain.com
 ```
 

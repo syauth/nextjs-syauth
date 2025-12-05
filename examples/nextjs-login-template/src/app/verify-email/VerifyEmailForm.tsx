@@ -14,10 +14,10 @@ export default function VerifyEmailForm() {
   const [resendLoading, setResendLoading] = useState(false)
   const [resendMessage, setResendMessage] = useState<string | null>(null)
 
-  const clientId = searchParams.get('client_id') || process.env.NEXT_PUBLIC_OAUTH_CLIENT_ID || ''
+  const clientId = searchParams.get('client_id') || process.env.NEXT_PUBLIC_SYAUTH_CLIENT_ID || ''
   const redirectUri = searchParams.get('redirect_uri') || process.env.NEXT_PUBLIC_LOGIN_URL || ''
   const state = searchParams.get('state') || ''
-  const apiUrl = process.env.NEXT_PUBLIC_S0011_API_URL
+  const apiUrl = process.env.NEXT_PUBLIC_SYAUTH_API_URL
 
   useEffect(() => {
     const emailParam = searchParams.get('email')

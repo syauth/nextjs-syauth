@@ -13,7 +13,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
 
   // Get OAuth parameters from URL
-  const clientId = searchParams.get('client_id') || process.env.NEXT_PUBLIC_OAUTH_CLIENT_ID || ''
+  const clientId = searchParams.get('client_id') || process.env.NEXT_PUBLIC_SYAUTH_CLIENT_ID || ''
   const redirectUri = searchParams.get('redirect_uri') || process.env.NEXT_PUBLIC_LOGIN_URL || ''
   const state = searchParams.get('state') || undefined
 

@@ -29,7 +29,7 @@ export default function RegisterForm({
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  const apiUrl = process.env.NEXT_PUBLIC_S0011_API_URL
+  const apiUrl = process.env.NEXT_PUBLIC_SYAUTH_API_URL
   const apiKey = process.env.NEXT_PUBLIC_SYAUTH_API_KEY
 
   const handleSubmit = async (e: FormEvent) => {

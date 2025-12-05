@@ -10,7 +10,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push('/')
+      // Check for auth_status cookie before redirecting
+      const hasAuthStatusCookie = document.cookie.includes('auth_status=')
+      if (!hasAuthStatusCookie) {
+        router.push('/')
+      }
     }
   }, [isAuthenticated, loading, router])
 

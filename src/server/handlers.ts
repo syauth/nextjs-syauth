@@ -13,6 +13,7 @@ export interface OAuthConfig {
   tokenEndpoint: string;
   redirectUri: string;
   scope?: string;
+  defaultRedirectTo?: string; // Where to redirect after successful login
 }
 
 /**
@@ -27,8 +28,10 @@ export async function handleOAuthLogin(
   const { verifier, challenge } = await generatePKCEPair();
   const state = generateState();
 
-  // Get optional redirect path from query params
-  const redirectTo = request.nextUrl.searchParams.get('redirectTo') || undefined;
+  // Get redirect path: query param > config default > /dashboard
+  const redirectTo = request.nextUrl.searchParams.get('redirectTo') 
+    || config.defaultRedirectTo 
+    || '/dashboard';
 
   // Store session on server
   await createOAuthSession({
@@ -113,35 +116,27 @@ export async function handleOAuthCallback(
     // Clear OAuth session
     clearOAuthSession();
 
-    // Redirect to success page with tokens in URL (will be handled client-side)
-    // In production, you might want to set tokens as HTTP-only cookies instead
-    const redirectUrl = new URL(session.redirectTo || '/', request.url);
-    redirectUrl.searchParams.set('auth_success', 'true');
+    // Redirect to success page
+    // Use the origin from the redirect_uri config to handle proxies like ngrok correctly
+    const redirectOrigin = new URL(config.redirectUri).origin;
+    const redirectPath = session.redirectTo || '/dashboard';
     
-    const response = NextResponse.redirect(redirectUrl);
+    // Pass tokens via URL hash (fragment) so the client can set cookies
+    // This works around cross-origin cookie issues (e.g., ngrok proxy)
+    // The hash is never sent to the server, keeping tokens somewhat private
+    const tokenData = {
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expires_in: tokens.expires_in || 3600,
+    };
+    const encodedTokens = Buffer.from(JSON.stringify(tokenData)).toString('base64');
     
-    // Set tokens as HTTP-only cookies (more secure than URL)
-    if (tokens.access_token) {
-      response.cookies.set('syauth_access_token', tokens.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: tokens.expires_in || 3600,
-        path: '/',
-      });
-    }
-
-    if (tokens.refresh_token) {
-      response.cookies.set('syauth_refresh_token', tokens.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60, // 30 days
-        path: '/',
-      });
-    }
-
-    return response;
+    // Redirect to auth/success page which will set cookies and redirect to final destination
+    const successUrl = new URL('/auth/success', redirectOrigin);
+    successUrl.searchParams.set('redirect', redirectPath);
+    successUrl.hash = `tokens=${encodedTokens}`;
+    
+    return NextResponse.redirect(successUrl);
   } catch (error) {
     clearOAuthSession();
     return NextResponse.redirect(

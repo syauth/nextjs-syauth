@@ -34,11 +34,63 @@ export default function ProfileForm() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
-  const apiUrl = process.env.NEXT_PUBLIC_S0011_API_URL
+  const apiUrl = process.env.NEXT_PUBLIC_SYAUTH_API_URL
 
   useEffect(() => {
-    fetchProfile()
+    // Check for OAuth code in URL
+    const searchParams = new URLSearchParams(window.location.search)
+    const code = searchParams.get('code')
+    
+    if (code) {
+      handleAuthCode(code)
+    } else {
+      fetchProfile()
+    }
   }, [])
+
+  const handleAuthCode = async (code: string) => {
+    try {
+      setLoading(true)
+      const clientId = process.env.NEXT_PUBLIC_SYAUTH_CLIENT_ID
+      const redirectUri = `${window.location.origin}/profile`
+      
+      const response = await fetch(`${apiUrl}/oauth/token/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          grant_type: 'authorization_code',
+          code,
+          client_id: clientId,
+          redirect_uri: redirectUri,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error_description || data.error || 'Failed to exchange code for token')
+      }
+
+      // Store tokens
+      if (data.access_token) {
+        localStorage.setItem('auth_token', data.access_token)
+      }
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token)
+      }
+
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname)
+
+      // Fetch profile with new token
+      await fetchProfile()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication failed')
+      setLoading(false)
+    }
+  }
 
   const fetchProfile = async () => {
     try {

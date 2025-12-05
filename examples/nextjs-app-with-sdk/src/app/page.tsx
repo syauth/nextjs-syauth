@@ -44,13 +44,23 @@ export default function HomePage() {
           </button>
           <button
             onClick={() => {
-              const registerUrl = `${syAuthConfig.apiUrl}/auth/register/?client_id=${syAuthConfig.oauthClientId}&redirect_uri=${encodeURIComponent(syAuthConfig.redirectUri)}`
+              const registerUrl = `${syAuthConfig.apiUrl}/auth/register/?client_id=${syAuthConfig.oauthClientId}&redirect_uri=${encodeURIComponent(syAuthConfig.redirectUri || '')}`
               window.location.href = registerUrl
             }}
             className="button button-secondary"
             style={{ fontSize: '1.1rem', padding: '1rem 2rem' }}
           >
             Create Account
+          </button>
+          <button
+            onClick={() => {
+              const forgotPasswordUrl = `${syAuthConfig.apiUrl}/auth/forgot-password/?client_id=${syAuthConfig.oauthClientId}&redirect_uri=${encodeURIComponent(syAuthConfig.redirectUri || '')}`
+              window.location.href = forgotPasswordUrl
+            }}
+            className="button button-secondary"
+            style={{ fontSize: '1.1rem', padding: '1rem 2rem' }}
+          >
+            Forgot Password
           </button>
         </div>
 

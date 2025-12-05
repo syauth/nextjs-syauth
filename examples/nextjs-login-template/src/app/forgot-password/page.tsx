@@ -2,16 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import LoginForm from '@/components/LoginForm'
-import { BrandingConfig, ExternalProvider } from '@/lib/types'
+import ForgotPasswordForm from '@/components/ForgotPasswordForm'
+import { BrandingConfig } from '@/lib/types'
 import { getBrandingFromEnv, mergeBranding } from '@/lib/branding'
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   const searchParams = useSearchParams()
   const [branding, setBranding] = useState<BrandingConfig | null>(null)
-  const [externalProviders, setExternalProviders] = useState<ExternalProvider[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   // Get OAuth parameters from URL
   const clientId = searchParams.get('client_id') || process.env.NEXT_PUBLIC_SYAUTH_CLIENT_ID || ''
@@ -29,34 +27,22 @@ export default function LoginPage() {
         if (response.ok) {
           const data = await response.json()
           
-          // Extract branding and external providers from response
           if (data.branding) {
             setBranding(data.branding)
           } else {
-            // If response is just branding object (backward compatibility)
             setBranding(data)
-          }
-          
-          // Set external providers if available
-          if (data.externalProviders && Array.isArray(data.externalProviders)) {
-            setExternalProviders(data.externalProviders.filter((p: ExternalProvider) => p.is_active))
-          } else {
-            setExternalProviders([])
           }
         } else {
           // Fallback to env-only branding
           const envBranding = getBrandingFromEnv()
           const fallbackBranding = mergeBranding(null, envBranding)
           setBranding(fallbackBranding)
-          setExternalProviders([])
         }
       } catch (err) {
-
         // Fallback to env-only branding
         const envBranding = getBrandingFromEnv()
         const fallbackBranding = mergeBranding(null, envBranding)
         setBranding(fallbackBranding)
-        setExternalProviders([])
       } finally {
         setLoading(false)
       }
@@ -80,40 +66,13 @@ export default function LoginPage() {
     )
   }
 
-  if (error) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        fontSize: '1.125rem',
-        color: '#c53030'
-      }}>
-        Error: {error}
-      </div>
-    )
-  }
-
   if (!branding) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        fontSize: '1.125rem',
-        color: '#4a5568'
-      }}>
-        Failed to load branding configuration
-      </div>
-    )
+    return null
   }
 
   return (
-    <LoginForm
+    <ForgotPasswordForm
       branding={branding}
-      externalProviders={externalProviders}
       clientId={clientId}
       redirectUri={redirectUri}
       state={state}
