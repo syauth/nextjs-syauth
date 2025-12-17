@@ -1,6 +1,6 @@
 {
   "name": "nextjs-app-with-syauth-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Example Next.js app using SyAuth SDK for authentication",
   "private": true,
   "scripts": {
@@ -11,7 +11,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@syauth/nextjs": "file:../..",
+    "@syauth/nextjs": "^0.4.2",
     "next": "15.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
