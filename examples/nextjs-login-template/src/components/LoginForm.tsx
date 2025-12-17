@@ -43,6 +43,7 @@ export default function LoginForm({
         body: JSON.stringify({
           email,
           password,
+          oauth_client: clientId, // Required to identify custom DB users
         }),
       })
 

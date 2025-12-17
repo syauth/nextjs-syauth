@@ -90,6 +90,7 @@ export const PKCE_STORAGE_KEYS = {
   CODE_VERIFIER: 'syauth_code_verifier',
   STATE: 'syauth_state',
   REDIRECT_TO: 'syauth_redirect_to',
+  PKCE_SESSION_ID: 'syauth_pkce_session_id',
 } as const;
 
 /**
@@ -211,6 +212,7 @@ export function clearPKCEParams(): void {
   deleteCookie(PKCE_STORAGE_KEYS.CODE_VERIFIER);
   deleteCookie(PKCE_STORAGE_KEYS.STATE);
   deleteCookie(PKCE_STORAGE_KEYS.REDIRECT_TO);
+  deleteCookie(PKCE_STORAGE_KEYS.PKCE_SESSION_ID);
   
   // Clear URL hash
   if (window.location.hash.includes('pkce=')) {
@@ -218,4 +220,94 @@ export function clearPKCEParams(): void {
   }
 }
 
+/**
+ * Server-side PKCE session response
+ */
+export interface ServerPKCESession {
+  sessionId: string;
+  codeChallenge: string;
+  codeChallengeMethod: string;
+}
 
+/**
+ * Initialize PKCE session on server
+ * 
+ * This stores code_verifier server-side to avoid cross-origin issues
+ * where the Next.js app's cookies aren't accessible from Django-rendered pages.
+ * 
+ * @param apiUrl - The backend API URL
+ * @param clientId - The OAuth client ID
+ * @returns Server PKCE session with session_id and code_challenge
+ */
+export async function initServerPKCE(
+  apiUrl: string, 
+  clientId: string
+): Promise<ServerPKCESession> {
+  const response = await fetch(`${apiUrl}/oauth/pkce/init/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ client_id: clientId }),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to initialize PKCE session');
+  }
+  
+  const data = await response.json();
+  
+  return {
+    sessionId: data.session_id,
+    codeChallenge: data.code_challenge,
+    codeChallengeMethod: data.code_challenge_method,
+  };
+}
+
+/**
+ * Store server PKCE session ID and state
+ * 
+ * @param sessionId - PKCE session ID from server
+ * @param state - State parameter for CSRF protection
+ * @param redirectTo - Optional redirect path after authentication
+ */
+export function storeServerPKCEParams(
+  sessionId: string,
+  state: string,
+  redirectTo?: string
+): void {
+  if (typeof window === 'undefined') return;
+
+  // Store in cookies with 10 minute expiry
+  setCookie(PKCE_STORAGE_KEYS.PKCE_SESSION_ID, sessionId, 600);
+  setCookie(PKCE_STORAGE_KEYS.STATE, state, 600);
+
+  if (redirectTo) {
+    setCookie(PKCE_STORAGE_KEYS.REDIRECT_TO, redirectTo, 600);
+  }
+}
+
+/**
+ * Retrieve server PKCE session parameters
+ * 
+ * @returns Object containing stored PKCE session parameters
+ */
+export function retrieveServerPKCEParams(): {
+  sessionId: string | null;
+  state: string | null;
+  redirectTo: string | null;
+} {
+  if (typeof window === 'undefined') {
+    return { sessionId: null, state: null, redirectTo: null };
+  }
+
+  const sessionId = getCookie(PKCE_STORAGE_KEYS.PKCE_SESSION_ID);
+  const state = getCookie(PKCE_STORAGE_KEYS.STATE);
+  const redirectTo = getCookie(PKCE_STORAGE_KEYS.REDIRECT_TO);
+
+  return {
+    sessionId,
+    state,
+    redirectTo,
+  };
+}

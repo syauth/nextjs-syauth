@@ -81,14 +81,24 @@ export default function RegisterForm({
 
       setSuccess(true)
 
-      // Wait 2 seconds then redirect to email verification
-      setTimeout(() => {
-        window.location.href = `/verify-email?email=${encodeURIComponent(
-          email
-        )}&client_id=${clientId}&redirect_uri=${encodeURIComponent(
-          redirectUri
-        )}${state ? `&state=${state}` : ''}`
-      }, 2000)
+      // Check if email verification is required (SYAuth users need it, custom DB users don't)
+      if (data.requires_verification === false) {
+        // Custom DB user - redirect directly to login after 2 seconds
+        setTimeout(() => {
+          window.location.href = `/?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+            redirectUri
+          )}${state ? `&state=${state}` : ''}`
+        }, 2000)
+      } else {
+        // SYAuth user - redirect to email verification
+        setTimeout(() => {
+          window.location.href = `/verify-email?email=${encodeURIComponent(
+            email
+          )}&client_id=${clientId}&redirect_uri=${encodeURIComponent(
+            redirectUri
+          )}${state ? `&state=${state}` : ''}`
+        }, 2000)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed')
     } finally {
@@ -132,7 +142,7 @@ export default function RegisterForm({
         {/* Success Message */}
         {success && (
           <div className={styles.success}>
-            Account created! Check your email for verification code...
+            Account created! Redirecting...
           </div>
         )}
 

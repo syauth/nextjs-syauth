@@ -5,6 +5,9 @@ import {
   storePKCEParams,
   retrievePKCEParams,
   clearPKCEParams,
+  initServerPKCE,
+  storeServerPKCEParams,
+  retrieveServerPKCEParams,
 } from './utils/pkce';
 
 export interface AuthUser {
@@ -471,7 +474,7 @@ class SyAuth {
 
   /**
    * Initiate OAuth 2.0 login by redirecting to the authorization endpoint
-   * Uses PKCE (Proof Key for Code Exchange) for security
+   * Uses server-side PKCE to avoid cross-origin issues when navigating through Django pages.
    *
    * @param redirectTo - Optional path to redirect to after successful authentication
    */
@@ -487,15 +490,21 @@ class SyAuth {
       );
     }
 
-    // Generate PKCE parameters
-    const { verifier, challenge } = await generatePKCEPair();
+    // Initialize PKCE session on server (stores code_verifier server-side)
+    // This solves cross-origin issues when users navigate to Django-rendered pages
+    const pkce = await initServerPKCE(this.config.apiUrl, this.config.oauthClientId);
     const state = generateState();
 
-    // Store PKCE parameters in session storage
-    storePKCEParams(verifier, state, redirectTo);
+    // Store PKCE session_id and state locally
+    storeServerPKCEParams(pkce.sessionId, state, redirectTo);
 
-    // Build authorization URL
-    const authUrl = this.buildAuthorizationUrl(challenge, state);
+    // Build authorization URL with server-provided code_challenge
+    const authUrl = this.buildAuthorizationUrlWithSession(
+      pkce.codeChallenge,
+      pkce.codeChallengeMethod,
+      pkce.sessionId,
+      state
+    );
 
     // Redirect to authorization endpoint
     window.location.href = authUrl;
@@ -513,8 +522,13 @@ class SyAuth {
       throw new Error('handleOAuthCallback can only be called in the browser');
     }
 
-    // Retrieve stored PKCE parameters
-    const { verifier, state: storedState } = retrievePKCEParams();
+    // Try server-side PKCE first, fall back to client-side
+    const serverParams = retrieveServerPKCEParams();
+    const clientParams = retrievePKCEParams();
+    
+    const storedState = serverParams.state || clientParams.state;
+    const pkceSessionId = serverParams.sessionId;
+    const codeVerifier = clientParams.verifier;
 
     // Validate state parameter (CSRF protection)
     if (!storedState || storedState !== params.state) {
@@ -524,18 +538,20 @@ class SyAuth {
       );
     }
 
-    if (!verifier) {
+    // Must have either pkce_session_id (server-side) or code_verifier (client-side)
+    if (!pkceSessionId && !codeVerifier) {
       clearPKCEParams();
       throw new Error(
-        'Code verifier not found. Please initiate login again.'
+        'PKCE session not found. Please initiate login again.'
       );
     }
 
     try {
       // Exchange authorization code for tokens
-      const tokenResponse = await this.exchangeCodeForToken(
+      const tokenResponse = await this.exchangeCodeForTokenWithSession(
         params.code,
-        verifier
+        pkceSessionId || undefined,
+        codeVerifier || undefined
       );
 
       // Store the access token, refresh token, and expiry
@@ -578,32 +594,52 @@ class SyAuth {
   }
 
   /**
-   * Exchange authorization code for access token
-   * Calls the /oauth/token/ endpoint with PKCE verification
-   *
-   * @param code - Authorization code from callback
-   * @param codeVerifier - PKCE code verifier
-   * @returns Token response
+   * Exchange authorization code for access token (legacy client-side PKCE)
+   * @deprecated Use exchangeCodeForTokenWithSession instead
    */
   private async exchangeCodeForToken(
     code: string,
     codeVerifier: string
+  ): Promise<OAuthTokenResponse> {
+    return this.exchangeCodeForTokenWithSession(code, undefined, codeVerifier);
+  }
+
+  /**
+   * Exchange authorization code for access token
+   * Supports both server-side PKCE (pkce_session_id) and client-side PKCE (code_verifier)
+   *
+   * @param code - Authorization code from callback
+   * @param pkceSessionId - Server-side PKCE session ID (preferred)
+   * @param codeVerifier - Client-side PKCE code verifier (fallback)
+   * @returns Token response
+   */
+  private async exchangeCodeForTokenWithSession(
+    code: string,
+    pkceSessionId?: string,
+    codeVerifier?: string
   ): Promise<OAuthTokenResponse> {
     if (!this.config.redirectUri) {
       throw new Error('redirectUri is required for token exchange');
     }
 
     try {
-      // Note: /oauth/token/ endpoint already has CSRF exempt + wildcard CORS
+      // Build request params - prefer pkce_session_id over code_verifier
+      const requestParams: Record<string, string> = {
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: this.config.redirectUri,
+        client_id: this.config.oauthClientId,
+      };
+
+      if (pkceSessionId) {
+        requestParams.pkce_session_id = pkceSessionId;
+      } else if (codeVerifier) {
+        requestParams.code_verifier = codeVerifier;
+      }
+
       const response = await this.apiClient.post<OAuthTokenResponse>(
         '/oauth/token/',
-        new URLSearchParams({
-          grant_type: 'authorization_code',
-          code: code,
-          redirect_uri: this.config.redirectUri,
-          client_id: this.config.oauthClientId,
-          code_verifier: codeVerifier,
-        }).toString(),
+        new URLSearchParams(requestParams).toString(),
         {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -721,11 +757,47 @@ class SyAuth {
   }
 
   /**
+   * Build the OAuth authorization URL with server-side PKCE session
+   * Includes pkce_session_id to allow server to retrieve code_verifier during token exchange
+   *
+   * @param codeChallenge - PKCE code challenge (from server)
+   * @param codeChallengeMethod - PKCE code challenge method (from server)
+   * @param pkceSessionId - Server-side PKCE session ID
+   * @param state - State parameter for CSRF protection
+   * @returns Complete authorization URL
+   */
+  private buildAuthorizationUrlWithSession(
+    codeChallenge: string,
+    codeChallengeMethod: string,
+    pkceSessionId: string,
+    state: string
+  ): string {
+    const scopes = this.config.scopes || 'openid profile email';
+
+    const params = new URLSearchParams({
+      client_id: this.config.oauthClientId,
+      redirect_uri: this.config.redirectUri!,
+      response_type: 'code',
+      scope: scopes,
+      state: state,
+      code_challenge: codeChallenge,
+      code_challenge_method: codeChallengeMethod,
+      pkce_session_id: pkceSessionId,
+    });
+
+    return `${this.config.apiUrl}/oauth/authorize/?${params.toString()}`;
+  }
+
+  /**
    * Get the redirect path stored during login initiation
    *
    * @returns The redirect path or null
    */
   getStoredRedirectPath(): string | null {
+    // Try server PKCE params first, fall back to client-side
+    const { redirectTo: serverRedirectTo } = retrieveServerPKCEParams();
+    if (serverRedirectTo) return serverRedirectTo;
+    
     const { redirectTo } = retrievePKCEParams();
     return redirectTo;
   }
