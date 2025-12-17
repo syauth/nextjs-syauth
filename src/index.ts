@@ -1,8 +1,9 @@
 import SyAuth from './client'
 import { SyAuthProvider, useSyAuth } from './react'
 import { withAuth } from './middleware'
+import { useOAuthCallback } from './hooks/useOAuthCallback'
 
-export { SyAuth, SyAuthProvider, useSyAuth, withAuth }
+export { SyAuth, SyAuthProvider, useSyAuth, withAuth, useOAuthCallback }
 
 // export types
 export type {
@@ -10,10 +11,14 @@ export type {
   AuthResponse,
   SyAuthConfig,
   ProfileUpdateData,
+  PasswordUpdateData,
   RegisterData,
   PasswordResetConfirmData,
   VerificationResponse,
   PasswordResetResponse,
+  OAuthTokenResponse,
+  OAuthCallbackParams,
 } from './client'
 
 export type { MiddlewareOptions } from './middleware'
+export type { UseOAuthCallbackResult } from './hooks/useOAuthCallback'

@@ -1,0 +1,25 @@
+{
+  "name": "nextjs-app-with-syauth-sdk",
+  "version": "1.0.0",
+  "description": "Example Next.js app using SyAuth SDK for authentication",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --experimental-https --turbopack",
+    "dev:ngrok": "bash scripts/start-with-ngrok-cli.sh",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@syauth/nextjs": "file:../..",
+    "next": "15.5.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.0.0"
+  }
+}

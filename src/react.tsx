@@ -9,7 +9,27 @@ import SyAuth, {
   VerificationResponse,
   PasswordResetResponse,
   ProfileUpdateData,
+  PasswordUpdateData,
+  OAuthCallbackParams,
 } from './client'
+
+/**
+ * Validates a redirect URL to prevent open redirect vulnerabilities
+ * Only allows relative paths starting with /
+ */
+function isValidRedirectUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') {
+    return false
+  }
+  // Must start with / and NOT be protocol-relative (//)
+  if (!url.startsWith('/') || url.startsWith('//')) {
+    return false
+  }
+  // Prevent dangerous protocols
+  const dangerous = ['javascript:', 'data:', 'vbscript:', 'file:', 'about:']
+  const lower = url.toLowerCase()
+  return !dangerous.some(protocol => lower.includes(protocol))
+}
 
 // Context type
 interface AuthContextType {
@@ -23,9 +43,12 @@ interface AuthContextType {
     password: string,
     remember_me?: boolean
   ) => Promise<void>
+  loginWithRedirect: (redirectTo?: string) => Promise<void>
+  handleOAuthCallback: (params: OAuthCallbackParams) => Promise<void>
   logout: () => Promise<void>
   register: (userData: RegisterData) => Promise<void>
   updateProfile: (data: ProfileUpdateData) => Promise<AuthUser>
+  updatePassword: (data: PasswordUpdateData) => Promise<{ message: string }>
   verifyEmail: (email: string, code: string) => Promise<VerificationResponse>
   requestVerificationCode: (email: string) => Promise<VerificationResponse>
   requestPasswordReset: (email: string) => Promise<PasswordResetResponse>
@@ -60,37 +83,71 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
 
   // Check authentication on mount
   useEffect(() => {
+    let cancelled = false
+
     const checkAuth = async () => {
       try {
-        setLoading(true)
+        if (!cancelled) {
+          setLoading(true)
+        }
 
+        // Check if we have auth_status cookie (set by server-side OAuth flow)
+        const hasAuthStatusCookie = typeof document !== 'undefined' && 
+          document.cookie.includes('auth_status=')
+        
         // First check if we already have a user in storage
         const storedUser = authClient.getUser()
-        if (storedUser) {
+        if (storedUser && !cancelled) {
           setUser(storedUser)
           setIsAuthenticated(true)
         }
 
-        // Then try to fetch the latest profile
-        const userData = await authClient.getProfile()
-        if (userData) {
-          setUser(userData)
-          setIsAuthenticated(true)
-        } else if (!storedUser) {
+        // Then try to fetch the latest profile (will auto-refresh token if needed)
+        // Only fetch if we have a token OR auth_status cookie (server-side flow)
+        if (authClient.getToken() || hasAuthStatusCookie) {
+          try {
+            const userData = await authClient.getProfile()
+            if (userData && !cancelled) {
+              setUser(userData)
+              setIsAuthenticated(true)
+            }
+          } catch (profileError) {
+            // Profile fetch failed but we have auth_status cookie
+            // This means server-side auth succeeded but we can't get profile
+            // Still mark as authenticated to prevent redirect loop
+            if (hasAuthStatusCookie && !cancelled) {
+              setIsAuthenticated(true)
+            } else {
+              throw profileError
+            }
+          }
+        } else if (!storedUser && !cancelled) {
           setUser(null)
           setIsAuthenticated(false)
         }
       } catch (error) {
-        console.error('Auth check error:', error)
+        if (!cancelled) {
+          // If profile fetch fails (including refresh failure), clear auth state
+          console.error('Auth check error:', error)
+          setUser(null)
+          setIsAuthenticated(false)
+        }
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
     }
 
     checkAuth()
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      cancelled = true
+    }
   }, [authClient])
 
-  // Login function
+  // Login function (deprecated - use loginWithRedirect for OAuth 2.0)
   const login = async (
     email: string,
     password: string,
@@ -104,12 +161,12 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
       setUser(userData)
       setIsAuthenticated(true)
 
-      // Check for return_to parameter in URL
+      // Check for return_to parameter in URL with validation
       let returnTo = redirectAfterLogin
       if (typeof window !== 'undefined') {
         const params = new URLSearchParams(window.location.search)
         const returnToParam = params.get('return_to')
-        if (returnToParam) {
+        if (returnToParam && isValidRedirectUrl(returnToParam)) {
           returnTo = returnToParam
         }
       }
@@ -117,6 +174,57 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
       router.push(returnTo)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed'
+      setError(errorMessage)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // OAuth 2.0 login with redirect (recommended)
+  const loginWithRedirect = async (redirectTo?: string) => {
+    try {
+      setError(null)
+      // Determine redirect path
+      let redirectPath = redirectTo || redirectAfterLogin
+
+      // Check for return_to parameter in URL with validation
+      if (typeof window !== 'undefined' && !redirectTo) {
+        const params = new URLSearchParams(window.location.search)
+        const returnToParam = params.get('return_to')
+        if (returnToParam && isValidRedirectUrl(returnToParam)) {
+          redirectPath = returnToParam
+        }
+      }
+
+      // Initiate OAuth flow (will redirect to authorization endpoint)
+      await authClient.loginWithRedirect(redirectPath)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'OAuth login failed'
+      setError(errorMessage)
+      throw err
+    }
+  }
+
+  // Handle OAuth callback
+  const handleOAuthCallback = async (params: OAuthCallbackParams) => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Exchange code for token and get user
+      const userData = await authClient.handleOAuthCallback(params)
+      setUser(userData)
+      setIsAuthenticated(true)
+
+      // Get stored redirect path or use default
+      const storedRedirectPath = authClient.getStoredRedirectPath()
+      const returnTo = storedRedirectPath || redirectAfterLogin
+
+      router.push(returnTo)
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'OAuth callback failed'
       setError(errorMessage)
       throw err
     } finally {
@@ -263,31 +371,56 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
       setLoading(false)
     }
   }
+
+  // Update password
+  const updatePassword = async (data: PasswordUpdateData) => {
+    try {
+      setLoading(true)
+      setError(null)
+      const result = await authClient.updatePassword(data)
+      return result
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Password update failed'
+      setError(errorMessage)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Hook for handling unauthorized access - redirect if not authenticated
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      // Only redirect on client-side and only from protected pages
-      if (typeof window !== 'undefined') {
-        const pathname = window.location.pathname
+    // Check for auth_status cookie (set by server-side OAuth flow)
+    const hasAuthStatusCookie = typeof document !== 'undefined' && 
+      document.cookie.includes('auth_status=')
+    
+    // Don't redirect if we have auth cookie OR if authenticated OR still loading
+    if (loading || isAuthenticated || hasAuthStatusCookie) {
+      return
+    }
+    
+    // Only redirect on client-side and only from protected pages
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname
 
-        // Check if the current path is in a protected route pattern
-        const isProtectedPath = [
-          '/dashboard',
-          '/profile',
-          '/settings',
-          '/account',
-        ].some(
-          (protectedPath) =>
-            pathname === protectedPath ||
-            pathname.startsWith(`${protectedPath}/`)
+      // Check if the current path is in a protected route pattern
+      const isProtectedPath = [
+        '/dashboard',
+        '/profile',
+        '/settings',
+        '/account',
+      ].some(
+        (protectedPath) =>
+          pathname === protectedPath ||
+          pathname.startsWith(`${protectedPath}/`)
+      )
+
+      if (isProtectedPath) {
+        const returnPath = encodeURIComponent(
+          pathname + window.location.search
         )
-
-        if (isProtectedPath) {
-          const returnPath = encodeURIComponent(
-            pathname + window.location.search
-          )
-          router.push(`${unauthorizedRedirect}?return_to=${returnPath}`)
-        }
+        router.push(`${unauthorizedRedirect}?return_to=${returnPath}`)
       }
     }
   }, [loading, isAuthenticated, router, unauthorizedRedirect])
@@ -300,6 +433,8 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
     isAuthenticated,
     authClient,
     login,
+    loginWithRedirect,
+    handleOAuthCallback,
     logout,
     register,
     verifyEmail,
@@ -307,6 +442,7 @@ export const SyAuthProvider: React.FC<AuthProviderProps> = ({
     requestPasswordReset,
     confirmPasswordReset,
     updateProfile,
+    updatePassword,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
