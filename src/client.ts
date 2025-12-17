@@ -337,6 +337,12 @@ class SyAuth {
 
   async updatePassword(data: PasswordUpdateData): Promise<{ message: string }> {
     try {
+      // Debug: Log the current token state
+      const token = this.getToken();
+      console.log('[SDK Debug] updatePassword called, token exists:', !!token);
+      console.log('[SDK Debug] token length:', token?.length);
+      console.log('[SDK Debug] token preview:', token?.substring(0, 50) + '...');
+      
       const response = await this.apiClient.post<{ message: string }>(
         '/user/password/update/',
         data
@@ -345,6 +351,7 @@ class SyAuth {
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        console.log('[SDK Debug] updatePassword error:', error.response?.status, error.response?.data);
         const errorMessage = formatDjangoError(error);
         throw new Error(errorMessage);
       }
