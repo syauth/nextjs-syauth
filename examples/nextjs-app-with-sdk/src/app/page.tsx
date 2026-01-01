@@ -42,31 +42,11 @@ export default function HomePage() {
           >
             Sign In
           </button>
-          <button
-            onClick={() => {
-              const registerUrl = `${syAuthConfig.apiUrl}/auth/register/?client_id=${syAuthConfig.oauthClientId}&redirect_uri=${encodeURIComponent(syAuthConfig.redirectUri || '')}`
-              window.location.href = registerUrl
-            }}
-            className="button button-secondary"
-            style={{ fontSize: '1.1rem', padding: '1rem 2rem' }}
-          >
-            Create Account
-          </button>
-          <button
-            onClick={() => {
-              const forgotPasswordUrl = `${syAuthConfig.apiUrl}/auth/forgot-password/?client_id=${syAuthConfig.oauthClientId}&redirect_uri=${encodeURIComponent(syAuthConfig.redirectUri || '')}`
-              window.location.href = forgotPasswordUrl
-            }}
-            className="button button-secondary"
-            style={{ fontSize: '1.1rem', padding: '1rem 2rem' }}
-          >
-            Forgot Password
-          </button>
         </div>
 
         <div style={{ marginTop: '2rem', fontSize: '0.9rem', color: '#888' }}>
           <p>This app uses SyAuth SDK for authentication</p>
-          <p>Both sign in and registration redirect to SyAuth hosted pages</p>
+          <p>Click Sign In to login or create a new account</p>
         </div>
       </div>
 

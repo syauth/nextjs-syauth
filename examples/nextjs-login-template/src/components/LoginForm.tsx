@@ -82,7 +82,21 @@ export default function LoginForm({
       // After successful login, redirect to the final destination
       // The redirectUri is where the user wanted to go (e.g., the app)
       if (redirectUri) {
-        window.location.href = redirectUri
+        // Check if redirectUri points to same origin (would cause redirect loop)
+        try {
+          const redirectUrl = new URL(redirectUri)
+          const currentOrigin = window.location.origin
+          if (redirectUrl.origin === currentOrigin) {
+            // Same origin - avoid loop, go to profile
+            window.location.href = '/profile'
+          } else {
+            // Different origin - redirect to the app
+            window.location.href = redirectUri
+          }
+        } catch {
+          // Invalid URL, go to profile
+          window.location.href = '/profile'
+        }
       } else {
         // If no redirect URI, go to profile page
         window.location.href = '/profile'
